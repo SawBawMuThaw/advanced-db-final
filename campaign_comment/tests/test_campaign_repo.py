@@ -1,11 +1,14 @@
 import os
 from mongomock import MongoClient as MockMongoClient
 import pytest
-from ..repository.campaignRepository import create_campaign, get_campaign
+from ..repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, update_campaign
 from datetime import datetime
 from bson import ObjectId
 import requests
 
+@pytest.fixture
+def campaign_id() -> str:
+    return str("6622f0b7a12c4d91f9b00123")
 
 @pytest.fixture
 def mock_mongo_client():
@@ -13,11 +16,11 @@ def mock_mongo_client():
 
 
 @pytest.fixture
-def mock_db(mock_mongo_client):
+def mock_db(mock_mongo_client, campaign_id):
     db = mock_mongo_client['charitydb']
     db.create_collection('campaigns')
     doc = {
-        '_id': ObjectId("6622f0b7a12c4d91f9b00123"),
+        '_id': ObjectId(campaign_id),
         'goal': 50000.0,
         'current': 7350.0,
         'isOpen': True,
@@ -106,10 +109,8 @@ def test_create_campaign(mock_mongo_client, mock_db, monkeypatch):
     assert inserted_doc['isOpen'] == True
 
 
-def test_get_campaign(mock_mongo_client, mock_db, monkeypatch):
+def test_get_campaign(mock_mongo_client, mock_db, monkeypatch, campaign_id):
     monkeypatch.setenv('DB_NAME', 'charitydb')
-
-    campaign_id = "6622f0b7a12c4d91f9b00123"
     
     campaign_doc = get_campaign(mock_mongo_client, campaign_id=campaign_id)
     
@@ -123,13 +124,56 @@ def test_get_campaign(mock_mongo_client, mock_db, monkeypatch):
     
     assert campaign_doc is None
 
+# although mock_db is not used, including it causes the 1 document to be added 
+# to mock database
+def test_get_all_campaigns(mock_mongo_client, mock_db, monkeypatch, campaign_id):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+    
+    campaign_docs = get_all_campaigns(mock_mongo_client)
+    
+    assert len(campaign_docs) == 1
+    assert campaign_docs[0]['_id'] == ObjectId(campaign_id)
+    
+    campaign_docs = get_all_campaigns(mock_mongo_client, page=2)
+    
+    assert len(campaign_docs) == 0
+    
+    with pytest.raises(TypeError):
+        get_all_campaigns(mock_mongo_client, page='name')
 
-def test_get_all_campaigns(mocker, monkeypatch):
-    pass
 
-
-def test_update_campaign(mocker, monkeypatch):
-    pass
+def test_update_campaign(mock_mongo_client, mock_db, monkeypatch, campaign_id):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+    
+    new_title = "Updated Campaign Title"
+    description = "Updated description for the campaign."
+    videolink = "http://example.com/updated-video"
+    close = True
+    
+    result = update_campaign(mock_mongo_client, campaign_id=campaign_id, new_title=new_title, description=description, videolink=videolink, close=close)
+    
+    assert result is True
+    
+    document = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    assert document['info']['title'] == new_title
+    assert document['info']['description'] == description
+    assert document['info']['videolink'] == videolink
+    assert document['isOpen'] == False
+    
+    new_title = "Newly Updated Campaign Title"
+    description = "Newly Updated description for the campaign."
+    close = False
+    
+    result = update_campaign(mock_mongo_client, campaign_id=campaign_id, new_title=new_title, description=description, close=close)
+    
+    assert result is True
+    
+    document = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    
+    assert document['info']['title'] == new_title
+    assert document['info']['description'] == description
+    assert document['isOpen'] == True
+    assert document['info']['videolink'] == videolink
 
 
 def test_increment_campaign_current(mocker, monkeypatch):

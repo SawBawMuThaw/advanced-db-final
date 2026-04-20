@@ -45,3 +45,39 @@ def get_campaign(mongo_client, campaign_id : str):
     result = collection.find_one({"_id" : ObjectId(campaign_id)})
     
     return result
+
+def get_all_campaigns(mongo_client, page : int = 1):
+    db_name = os.getenv("DB_NAME")
+    page_size = 6
+    
+    offset = (page - 1) * page_size
+    
+    db = mongo_client[db_name]
+    collection = db['campaigns']
+    
+    results = collection.find().skip(offset).limit(page_size)
+    
+    return list(results)
+
+def update_campaign(mongo_client, campaign_id : str, new_title : str = None, description : str = None,
+                    videolink : str = None, close : bool = None):
+    db_name = os.getenv("DB_NAME")
+    
+    db = mongo_client[db_name]
+    collection = db['campaigns']
+    
+    query_filter = {"_id" : ObjectId(campaign_id)}
+    update_fields = {}
+    
+    if new_title is not None:
+        update_fields['info.title'] = new_title
+    if description is not None:
+        update_fields['info.description'] = description 
+    if videolink is not None:
+        update_fields['info.videolink'] = videolink
+    if close is not None:
+        update_fields['isOpen'] = not close
+    
+    result = collection.update_one(query_filter, {'$set' : update_fields})
+    
+    return result.modified_count > 0
