@@ -3,6 +3,7 @@ from mongomock import MongoClient as MockMongoClient
 import pytest
 from ..repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, update_campaign
 from ..repository.campaignRepository import increment_campaign_current, decrement_campaign_current
+from ..repository.campaignRepository import find_campaign_by_title, find_campaign_by_owner
 from datetime import datetime
 from bson import ObjectId
 import requests
@@ -194,8 +195,10 @@ def test_increment_campaign_current(mock_mongo_client, mock_db, campaign_id, mon
     assert doc['current'] == prev + amount
     
     amount = 50000
-    result = increment_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
-    assert result is False
+    with pytest.raises(Exception) as excinfo:
+        result = increment_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
+        
+        assert excinfo.value == "Amount exceeds campaign goal"
 
 
 def test_decrement_campaign_current(mock_mongo_client, mock_db, campaign_id, monkeypatch):
@@ -213,6 +216,29 @@ def test_decrement_campaign_current(mock_mongo_client, mock_db, campaign_id, mon
     assert doc['current'] == prev - amount
     
     amount = 10000
-    result = decrement_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
-    assert result is False 
+    with pytest.raises(Exception) as excinfo:
+        result = decrement_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
+        
+        assert excinfo.value == "Amount exceeds campaign current"
 
+def test_find_campaign_by_title(mock_mongo_client, mock_db, campaign_id, monkeypatch):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+    
+    title = "Clean Water for Barangay Malinis"
+    
+    doc = mock_db.campaigns.find_one({'info.title' : title})
+    
+    docs = find_campaign_by_title(mock_mongo_client, title)
+
+    assert docs[0]['info']['title'] == doc['info']['title']
+    
+def test_find_campaign_by_owner(mock_mongo_client, mock_db, campaign_id, monkeypatch):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+    
+    ownerId = 5
+    
+    doc = mock_db.campaigns.find_one({'info.owner.userId' : ownerId})
+    
+    docs = find_campaign_by_owner(mock_mongo_client, ownerId)
+    
+    assert docs[0]['info']['owner']['userId'] == doc['info']['owner']['userId']

@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest import result
 from bson import ObjectId
 import dotenv
 import os
@@ -134,3 +135,35 @@ def decrement_campaign_current(mongo_client, campaign_id : str, amount : float):
         result = collection.update_one(query_filter, update_operation)
     
     return result.modified_count > 0
+
+def find_campaign_by_title(mongo_client, title : str):
+    db_name = os.getenv("DB_NAME")
+    
+    db = mongo_client[db_name]
+    collection = db['campaigns']
+    
+    results = collection.find({"info.title" : title})
+    
+    campaigns = []
+    for doc in results:
+        doc['_id'] = str(doc['_id'])
+        campaign = Campaign.model_validate(doc)
+        campaigns.append(campaign.model_dump(by_alias=False, exclude_none=True))
+    
+    return campaigns
+
+def find_campaign_by_owner(mongo_client, ownerId : int):
+    db_name = os.getenv("DB_NAME")
+    
+    db = mongo_client[db_name]
+    collection = db['campaigns']
+    
+    results = collection.find({"info.owner.userId" : ownerId})
+    
+    campaigns = []
+    for doc in results:
+        doc['_id'] = str(doc['_id'])
+        campaign = Campaign.model_validate(doc)
+        campaigns.append(campaign.model_dump(by_alias=False, exclude_none=True))
+    
+    return campaigns

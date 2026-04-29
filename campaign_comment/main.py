@@ -6,7 +6,7 @@ from typing import Annotated
 from .models.CommentInput import CommentInput
 from .models.CreateCampaignInput import CreateCampaignInput
 from .models.UpdateCampaignInput import UpdateCampaignInput
-from .repository.campaignRepository import increment_campaign_current, decrement_campaign_current
+from .repository.campaignRepository import find_campaign_by_owner, find_campaign_by_title, increment_campaign_current, decrement_campaign_current
 from .repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, update_campaign
 from .repository.commentRepository import create_comment, create_reply
 from pymongo import MongoClient
@@ -34,6 +34,14 @@ def get_campaign_by_id(mongo_client: Annotated[MongoClient, Depends(get_mongo_cl
 @app.post("/campaign")
 def create_new_campaign(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], input : CreateCampaignInput):
     return create_campaign(mongo_client, input.title, input.description, input.videolink, input.ownerId, datetime.now(), input.goal)
+
+@app.get("/search")
+def search_campaigns_by_title(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], title : str):
+    return find_campaign_by_title(mongo_client, title)
+
+@app.get("/search/owner")
+def search_campaigns_by_owner(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], ownerId : int):
+    return find_campaign_by_owner(mongo_client, ownerId)
 
 @app.put("/campaign/{id}")
 def update_campaign_by_id(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], input : UpdateCampaignInput, id : str):

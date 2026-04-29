@@ -6,4 +6,6 @@ db = db.getSiblingDB('charitydb');
 // but useful if you want to specify validation or options.
 db.createCollection('campaigns');
 
+db.campaigns.createIndex({'info.title' : 1})
+
 console.log("Database 'charitydb' and collection 'campaigns' initialized.");
