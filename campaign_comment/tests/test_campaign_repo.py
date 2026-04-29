@@ -2,6 +2,7 @@ import os
 from mongomock import MongoClient as MockMongoClient
 import pytest
 from ..repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, update_campaign
+from ..repository.campaignRepository import increment_campaign_current, decrement_campaign_current
 from datetime import datetime
 from bson import ObjectId
 import requests
@@ -114,8 +115,10 @@ def test_get_campaign(mock_mongo_client, mock_db, monkeypatch, campaign_id):
     
     campaign_doc = get_campaign(mock_mongo_client, campaign_id=campaign_id)
     
+    print(campaign_doc)
+    
     assert campaign_doc is not None
-    assert campaign_doc['_id'] == ObjectId(campaign_id)
+    assert campaign_doc['campaignID'] == campaign_id
     assert campaign_doc['info']['title'] == "Clean Water for Barangay Malinis"
     
     campaign_id = "6622f0b7a12c4d91f9b99999"
@@ -132,7 +135,7 @@ def test_get_all_campaigns(mock_mongo_client, mock_db, monkeypatch, campaign_id)
     campaign_docs = get_all_campaigns(mock_mongo_client)
     
     assert len(campaign_docs) == 1
-    assert campaign_docs[0]['_id'] == ObjectId(campaign_id)
+    assert campaign_docs[0]['campaignID'] == campaign_id
     
     campaign_docs = get_all_campaigns(mock_mongo_client, page=2)
     
@@ -176,9 +179,40 @@ def test_update_campaign(mock_mongo_client, mock_db, monkeypatch, campaign_id):
     assert document['info']['videolink'] == videolink
 
 
-def test_increment_campaign_current(mocker, monkeypatch):
-    pass
+def test_increment_campaign_current(mock_mongo_client, mock_db, campaign_id, monkeypatch):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+    
+    campaigns = mock_db.campaigns
+    doc = campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    prev = doc['current']
+    amount = 100
+    
+    result = increment_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
+    
+    assert result is True
+    doc = campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    assert doc['current'] == prev + amount
+    
+    amount = 50000
+    result = increment_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
+    assert result is False
 
 
-def test_decrement_campaign_current(mocker, monkeypatch):
-    pass
+def test_decrement_campaign_current(mock_mongo_client, mock_db, campaign_id, monkeypatch):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+    
+    campaigns = mock_db.campaigns
+    doc = campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    prev = doc['current']
+    amount = 100
+    
+    result = decrement_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
+    doc = campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    
+    assert result is True
+    assert doc['current'] == prev - amount
+    
+    amount = 10000
+    result = decrement_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
+    assert result is False 
+

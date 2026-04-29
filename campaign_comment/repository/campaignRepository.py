@@ -5,6 +5,7 @@ import os
 from ..models.campaign import Campaign, Info
 from ..models.user import User
 import requests
+from bson import json_util
 
 dotenv.load_dotenv()
 
@@ -44,9 +45,14 @@ def get_campaign(mongo_client, campaign_id : str):
     
     result = collection.find_one({"_id" : ObjectId(campaign_id)})
     
-    return result
+    if result is None:
+        return None
+    
+    result['_id'] = str(result['_id'])
+    campaign = Campaign.model_validate(result)
+    return campaign.model_dump(by_alias=False, exclude_none=True)
 
-def get_all_campaigns(mongo_client, page : int = 1):
+def get_all_campaigns(mongo_client, page : int | None = 1):
     db_name = os.getenv("DB_NAME")
     page_size = 6
     
@@ -57,7 +63,12 @@ def get_all_campaigns(mongo_client, page : int = 1):
     
     results = collection.find().skip(offset).limit(page_size)
     
-    return list(results)
+    campaigns = []
+    for doc in results:
+        doc['_id'] = str(doc['_id'])
+        campaign = Campaign.model_validate(doc)
+        campaigns.append(campaign.model_dump(by_alias=False, exclude_none=True))
+    return campaigns
 
 def update_campaign(mongo_client, campaign_id : str, new_title : str = None, description : str = None,
                     videolink : str = None, close : bool = None):
@@ -79,5 +90,47 @@ def update_campaign(mongo_client, campaign_id : str, new_title : str = None, des
         update_fields['isOpen'] = not close
     
     result = collection.update_one(query_filter, {'$set' : update_fields})
+    
+    return result.modified_count > 0
+
+def increment_campaign_current(mongo_client, campaign_id : str, amount : float):
+    db_name = os.getenv("DB_NAME")
+    
+    db = mongo_client[db_name]
+    collection = db['campaigns']
+    
+    query_filter = {"_id" : ObjectId(campaign_id)}
+    update_operation = {"$inc" : {"current" : amount}}
+    
+    doc = collection.find_one(query_filter)
+    
+    if doc is None:
+        raise Exception("Campaign not found")
+    
+    if(doc['current'] + amount > doc['goal']):
+        raise Exception("Amount exceeds campaign goal")
+    else:
+        result = collection.update_one(query_filter, update_operation)
+    
+    return result.modified_count > 0
+
+def decrement_campaign_current(mongo_client, campaign_id : str, amount : float):
+    db_name = os.getenv("DB_NAME")
+    
+    db = mongo_client[db_name]
+    collection = db['campaigns']
+    
+    query_filter = {"_id" : ObjectId(campaign_id)}
+    update_operation = {"$inc" : {"current" : -amount}}
+    
+    doc = collection.find_one(query_filter)
+    
+    if doc is None:
+        raise Exception("Campaign not found")
+    
+    if(doc['current'] - amount < 0):
+        raise Exception("Amount exceeds campaign current")
+    else:
+        result = collection.update_one(query_filter, update_operation)
     
     return result.modified_count > 0
