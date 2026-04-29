@@ -29,7 +29,12 @@ def get_all_campaigns_endpoint(mongo_client: Annotated[MongoClient, Depends(get_
 
 @app.get("/campaign/{id}")
 def get_campaign_by_id(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], id : str):
-    return get_campaign(mongo_client, id)
+    campaign = get_campaign(mongo_client, id)
+    
+    if campaign is None:
+        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    
+    return campaign
 
 @app.post("/campaign")
 def create_new_campaign(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], input : CreateCampaignInput):
