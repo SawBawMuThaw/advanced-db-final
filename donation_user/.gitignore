@@ -1,0 +1,10 @@
+*pycache*
+*.env
+.pytest_cache
+private_key.pem
+public_key.pem
+private_key.pem.pub
+
+# Keys
+*.pem
+*.pem.pub
