@@ -116,7 +116,7 @@ def test_post_reply(mock_mongo_client, monkeypatch):
 
     commentId = "6622f0b7a12c4d91f9b00002"
 
-    result = test_client.post(f"/reply/{commentId}", json=payload)
+    result = test_client.put(f"/reply/{commentId}", json=payload)
 
     assert result.status_code == 200
     response = result.json()

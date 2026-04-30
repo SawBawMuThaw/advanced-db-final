@@ -95,7 +95,7 @@ def post_comment(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)]
     
     
 
-@app.post('/reply/{id}')
+@app.put('/reply/{id}')
 def post_reply(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], id : str, input: CommentInput):
     try:
         replyId = create_reply(mongo_client, id, input.userId, input.text, input.campaignId)

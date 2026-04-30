@@ -101,7 +101,7 @@ def increment_campaign_current(mongo_client, campaign_id : str, amount : float):
     collection = db['campaigns']
     
     query_filter = {"_id" : ObjectId(campaign_id)}
-    update_operation = {"$inc" : {"current" : amount}}
+    update_operation = {"$inc" : {"current" : amount, "available" : amount}}
     
     doc = collection.find_one(query_filter)
     
@@ -122,7 +122,7 @@ def decrement_campaign_current(mongo_client, campaign_id : str, amount : float):
     collection = db['campaigns']
     
     query_filter = {"_id" : ObjectId(campaign_id)}
-    update_operation = {"$inc" : {"current" : -amount}}
+    update_operation = {"$inc" : {"current" : -amount, "available" : -amount}}
     
     doc = collection.find_one(query_filter)
     
