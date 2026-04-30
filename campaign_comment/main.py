@@ -1,7 +1,12 @@
 from datetime import datetime
 
-from fastapi import FastAPI, Depends, HTTPException, status
-from typing import Annotated
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, status
+from typing import Annotated, List
+
+from fastapi.responses import FileResponse
+
+from .models.ReportInput import ReportInput
+from .repository.reportRepository import create_image, create_report, get_image
 
 from .models.CommentInput import CommentInput
 from .models.CreateCampaignInput import CreateCampaignInput
@@ -107,4 +112,42 @@ def post_reply(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], 
         if str(e) == "Failed to add reply":
             raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add reply")
     
+@app.post('/report')
+def post_report(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], input: ReportInput):
+    try:
+        reportId = create_report(mongo_client, input.campaignId, input.reportTitle, input.amount)
+        
+        return {"reportId" : reportId}
+    except Exception as e:
+        if str(e) == "Campaign not found":
+            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+        if str(e) == "Failed to add report":
+            raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add report")
+        
+@app.post('/image/{reportId}/{campaignId}')
+def post_image(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], reportId : str, campaignId : str, images : List[UploadFile]):
+    try:
+        image_names = create_image(mongo_client, reportId, campaignId, images)
+        
+        return {"imageNames" : image_names}
     
+    except Exception as e:
+        if str(e) == "Campaign not found":
+            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+        if str(e) == "Failed to add image":
+            raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add image")
+        if str(e) == "Invalid image format. Only JPEG and PNG are allowed.":
+            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="Invalid image format. Only JPEG and PNG are allowed.")
+        
+        
+@app.get('/image/{name}')
+def get_image_endpoint(name:str):
+    try:
+        image_path = get_image(name)
+        return FileResponse(image_path)
+    
+    except Exception as e:
+        if str(e) == "Image not found":     
+            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Image not found")
+        if str(e) == "Failed to get image":
+            raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get image")

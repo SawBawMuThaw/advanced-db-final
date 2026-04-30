@@ -81,5 +81,4 @@ def get_image(image_name : str):
     if not os.path.exists(image_path):
         raise ValueError("Image not found")
     
-    with open(image_path, "rb") as f:
-        return f.read()
+    return image_path

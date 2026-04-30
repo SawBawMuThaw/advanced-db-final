@@ -138,5 +138,6 @@ def test_get_image(mock_db, monkeypatch, tmpdir, mock_mongo_client, campaign_id)
     image_names = create_image(mock_mongo_client, reportId, campaign_id, [upload])
     
     for name in image_names:
-        image = get_image(name)
-        assert image == image_bytes
+        image_path = get_image(name)
+        with open(image_path, 'rb') as f:
+            assert f.read() == image_bytes
