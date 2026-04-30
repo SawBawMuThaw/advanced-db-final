@@ -11,7 +11,7 @@ from .repository.reportRepository import create_image, create_report, get_image
 from .models.CommentInput import CommentInput
 from .models.CreateCampaignInput import CreateCampaignInput
 from .models.UpdateCampaignInput import UpdateCampaignInput
-from .repository.campaignRepository import find_campaign_by_owner, find_campaign_by_title, increment_campaign_current, decrement_campaign_current
+from .repository.campaignRepository import find_campaign_by_owner, find_campaign_by_title, increment_campaign_current, decrement_campaign_current, like_campaign
 from .repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, update_campaign
 from .repository.commentRepository import create_comment, create_reply
 from pymongo import MongoClient
@@ -151,3 +151,16 @@ def get_image_endpoint(name:str):
             raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Image not found")
         if str(e) == "Failed to get image":
             raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get image")
+        
+@app.put('/like/{campaignId}/{userId}')
+def like_campaign_endpoint(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], campaignId : str, userId : int):
+    try:
+        result = like_campaign(mongo_client, campaignId, userId)
+        
+        if not result:
+            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    except Exception as e:
+        if str(e) == "Campaign not found":
+            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+        if str(e) == "User has already liked this campaign":
+            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="User has already liked this campaign")
