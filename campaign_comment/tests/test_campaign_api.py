@@ -242,3 +242,35 @@ def test_decrement_campaign_current(mock_db, monkeypatch, mock_mongo_client):
     
     assert result.status_code == 404
     assert result.json() == {"detail": "Campaign not found"}
+    
+def test_find_campaign_by_title(mock_db, monkeypatch, mock_mongo_client):
+    monkeypatch.setenv("DB_NAME", "charitydb")
+    app.dependency_overrides[get_mongo_client] = lambda: mock_mongo_client
+    
+    campaign_id = str(uuids[4])
+    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    
+    title = doc['info']['title']
+    
+    response = test_client.get(f"/search?title={title}")
+    result = response.json()
+    
+    assert response.status_code == 200
+    assert len(result) == 1
+    assert result[0]['info']['title'] == title
+    
+def test_find_campaign_by_owner(mock_db, monkeypatch, mock_mongo_client):
+    monkeypatch.setenv("DB_NAME", "charitydb")
+    app.dependency_overrides[get_mongo_client] = lambda: mock_mongo_client
+    
+    campaign_id = str(uuids[5])
+    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    
+    ownerId = doc['info']['owner']['userId']
+    
+    response = test_client.get(f"/search/owner?ownerId={ownerId}")
+    result = response.json()
+    
+    assert response.status_code == 200
+    assert len(result) >= 1
+    assert result[0]['info']['owner']['userId'] == ownerId

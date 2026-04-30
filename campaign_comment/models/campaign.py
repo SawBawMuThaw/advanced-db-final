@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 from .user import User
 from .comment import Comment
+from .report import Report
 
 class Info(BaseModel):
     title : str
@@ -18,9 +19,11 @@ class Campaign(BaseModel):
     campaignID : Optional[str] = Field(alias="_id", default=None)
     goal : float 
     current : float
+    available : float = Field(default=0) # track of amount of money available to withdraw
     isOpen : bool = Field(default=True)
     info : Info
-    comments : List[Comment]
+    comments : List[Comment] = Field(default=[])
+    reports : List[Report] = Field(default=[])
       
     model_config = ConfigDict(populate_by_name=True)
     
