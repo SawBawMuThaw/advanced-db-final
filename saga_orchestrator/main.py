@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException, status
+from typing import List
+
+from fastapi import FastAPI, HTTPException, UploadFile, status
 from .models.DonationInput import DonationInput
 from .models.CampaignInput import CampaignInput
 from .models.CommentInput import CommentInput
 from .models.UserInput import UserInput
+from .models.ReportInput import ReportInput
 import dotenv
 import os
 import requests
@@ -129,3 +132,47 @@ def create_user(input: UserInput):
     
     user_id = response.json().get('userId')
     return user_id
+
+@app.post('/report')
+def create_report(input: ReportInput): 
+    campaign_url = os.getenv("CAMPAIGN_COMMENT_SERVICE")
+    
+    # check if campaign exists
+    response = requests.get(campaign_url + f"/campaign/{input.campaignId}")
+    if response.status_code == 404:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    
+    payload = {
+        "campaignId" : input.campaignId,
+        "reportTitle" : input.reportTitle,
+        "amount" : input.amount
+    }
+    
+    response = requests.post(campaign_url + "/report", json=payload)
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create report")
+    report_id = response.json().get('reportId')
+    return report_id
+
+@app.post('/image/{reportId}/{campaignId}')
+def upload_image(reportId : str, campaignId : str, images : List[UploadFile]):
+    campaign_url = os.getenv("CAMPAIGN_COMMENT_SERVICE")
+    
+    # check if campaign exists
+    response = requests.get(campaign_url + f"/campaign/{campaignId}")
+    if response.status_code == 404:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    
+    # check if report exists
+    response = requests.get(campaign_url + f"/report/{reportId}")
+    if response.status_code == 404:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    
+    response = requests.post(campaign_url + f"/image/{reportId}/{campaignId}", files={"images": images})
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload images")
+    
+    image_names = response.json().get('imageNames')
+    return image_names
