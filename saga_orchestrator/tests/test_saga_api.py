@@ -191,3 +191,17 @@ def test_donate_rolls_back_when_campaign_increment_fails(monkeypatch):
 	)
 	put_mock.assert_called_once_with("http://campaign-service/increment/123456789012/40.0")
 	delete_mock.assert_called_once_with("http://user-service/donate/dnt-22")
+ 
+def test_like(monkeypatch):
+	client = _client(monkeypatch)
+
+	with patch.object(main.requests, "get", return_value=DummyResponse(200)) as mock_get, patch.object(
+		main.requests, "put", return_value=DummyResponse(200)
+	) as mock_put:
+		response = client.put("/like/123456789012/5")
+
+	assert response.status_code == 200
+	mock_get.assert_called_once_with("http://campaign-service/campaign/123456789012")
+	mock_put.assert_called_once_with(
+		"http://campaign-service/like/123456789012/5"
+	)

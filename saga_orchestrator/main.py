@@ -176,3 +176,17 @@ def upload_image(reportId : str, campaignId : str, images : List[UploadFile]):
     
     image_names = response.json().get('imageNames')
     return image_names
+
+@app.put("/like/{campaignId}/{userId}")
+def like_campaign(campaignId : str, userId : int):
+    campaign_url = os.getenv("CAMPAIGN_COMMENT_SERVICE")
+    
+    # check if campaign exists
+    response = requests.get(campaign_url + f"/campaign/{campaignId}")
+    if response.status_code == 404:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    
+    response = requests.put(campaign_url + f"/like/{campaignId}/{userId}")
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to like campaign")

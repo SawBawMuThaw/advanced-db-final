@@ -274,3 +274,31 @@ def test_find_campaign_by_owner(mock_db, monkeypatch, mock_mongo_client):
     assert response.status_code == 200
     assert len(result) >= 1
     assert result[0]['info']['owner']['userId'] == ownerId
+    
+def test_like_campaign(mock_db, monkeypatch, mock_mongo_client):
+    monkeypatch.setenv("DB_NAME", "charitydb")
+    app.dependency_overrides[get_mongo_client] = lambda: mock_mongo_client
+    
+    campaign_id = str(uuids[6])
+    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    
+    userId = random.randint(1, 100)
+    
+    response = test_client.put(f"/like/{campaign_id}/{userId}")
+    
+    assert response.status_code == 200
+    
+    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    
+    assert userId in doc['info']['likedBy']
+    
+    bogus_campaign_id = str(ObjectId())
+    response = test_client.put(f"/like/{bogus_campaign_id}/{userId}")
+    
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Campaign not found"}
+    
+    response = test_client.put(f"/like/{campaign_id}/{userId}")
+    
+    assert response.status_code == 400
+    assert response.json() == {"detail": "User has already liked this campaign"}

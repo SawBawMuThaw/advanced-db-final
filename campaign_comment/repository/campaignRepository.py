@@ -167,3 +167,25 @@ def find_campaign_by_owner(mongo_client, ownerId : int):
         campaigns.append(campaign.model_dump(by_alias=False, exclude_none=True))
     
     return campaigns
+
+def like_campaign(mongo_client, campaign_id : str, userId : int):
+    db_name = os.getenv("DB_NAME")
+    
+    db = mongo_client[db_name]
+    collection = db['campaigns']
+    
+    query_filter = {"_id" : ObjectId(campaign_id)}
+    
+    doc = collection.find_one(query_filter)
+    
+    if doc is None:
+        raise Exception("Campaign not found")
+    
+    if userId in doc['info']['likedBy']:
+        raise Exception("User has already liked this campaign")
+    
+    update_operation = {"$inc" : {"info.likes" : 1}, "$push" : {"info.likedBy" : userId}}
+    
+    result = collection.update_one(query_filter, update_operation)
+    
+    return result.modified_count > 0

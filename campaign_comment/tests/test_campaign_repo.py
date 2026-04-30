@@ -1,7 +1,7 @@
 import os
 from mongomock import MongoClient as MockMongoClient
 import pytest
-from ..repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, update_campaign
+from ..repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, like_campaign, update_campaign
 from ..repository.campaignRepository import increment_campaign_current, decrement_campaign_current
 from ..repository.campaignRepository import find_campaign_by_title, find_campaign_by_owner
 from datetime import datetime
@@ -242,3 +242,28 @@ def test_find_campaign_by_owner(mock_mongo_client, mock_db, campaign_id, monkeyp
     docs = find_campaign_by_owner(mock_mongo_client, ownerId)
     
     assert docs[0]['info']['owner']['userId'] == doc['info']['owner']['userId']
+    
+def test_like_campaign(mock_mongo_client, mock_db, campaign_id, monkeypatch):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+    
+    userId = 20
+    
+    result = like_campaign(mock_mongo_client, campaign_id, userId)
+    
+    assert result is True
+    
+    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    
+    assert userId in doc['info']['likedBy']
+    
+    bogus_campaign_id = "6622f0b7a12c4d91f9b99999"
+    with pytest.raises(Exception) as excinfo:
+        result = like_campaign(mock_mongo_client, bogus_campaign_id, userId)
+        
+        assert excinfo.value == "Campaign not found"
+        
+    with pytest.raises(Exception) as excinfo:
+        result = like_campaign(mock_mongo_client, campaign_id, userId)
+        
+        assert excinfo.value == "User has already liked this campaign"
+        
