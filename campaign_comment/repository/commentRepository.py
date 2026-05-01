@@ -22,10 +22,35 @@ def _normalize_comment_id(commentId: str):
     except (InvalidId, TypeError):
         return commentId
 
-def create_comment(mongo_client, userId: int, text : str, campaignId: str):
+# def create_comment(mongo_client, userId: int, text : str, campaignId: str):
+#     db_name = os.getenv("DB_NAME")
+    
+#     db = mongo_client[db_name]
+#     campaigns = db['campaigns']
+    
+#     doc = campaigns.find_one({"_id" : ObjectId(campaignId)})
+    
+#     if doc is None:
+#         raise Exception("Campaign not found")
+    
+#     username = _get_username(userId)
+#     commentId = str(ObjectId())
+#     comment = Comment(_id=commentId, user=User(userId=userId, username=username), text=text, replies=[]).model_dump(by_alias=True, exclude_none=True)
+    
+#     filter = {'_id' : ObjectId(campaignId)}
+#     update_operation = {'$push' : {'comments' : comment}}
+#     result = campaigns.update_one(filter, update_operation)
+    
+#     if result.modified_count == 0:
+#         raise Exception("Failed to add comment")
+    
+#     return commentId
+
+def create_comment(mongo_client, userId: int, text: str, campaignId: str):
     db_name = os.getenv("DB_NAME")
     
     db = mongo_client[db_name]
+    comments = db['comments']
     campaigns = db['campaigns']
     
     doc = campaigns.find_one({"_id" : ObjectId(campaignId)})
@@ -34,22 +59,57 @@ def create_comment(mongo_client, userId: int, text : str, campaignId: str):
         raise Exception("Campaign not found")
     
     username = _get_username(userId)
-    commentId = str(ObjectId())
-    comment = Comment(_id=commentId, user=User(userId=userId, username=username), text=text, replies=[]).model_dump(by_alias=True, exclude_none=True)
     
-    filter = {'_id' : ObjectId(campaignId)}
-    update_operation = {'$push' : {'comments' : comment}}
-    result = campaigns.update_one(filter, update_operation)
+    comment = {
+        'campaignId' : ObjectId(campaignId),
+        'parentId' : None,
+        'user' : {
+            'userId' : userId,
+            'username' : username
+        },
+        'text' : text,
+    }
     
-    if result.modified_count == 0:
+    result = comments.insert_one(comment)
+    
+    if result.inserted_id is None:
         raise Exception("Failed to add comment")
     
-    return commentId
+    return str(result.inserted_id)
+
+# def create_reply(mongo_client, commentId : str, userId: int, text : str, campaignId: str):
+#     db_name = os.getenv("DB_NAME")
+    
+#     db = mongo_client[db_name]
+#     campaigns = db['campaigns']
+    
+#     doc = campaigns.find_one({"_id" : ObjectId(campaignId)})
+    
+#     if doc is None:
+#         raise Exception("Campaign not found")
+    
+#     username = _get_username(userId)
+    
+    
+#     replyId = str(ObjectId())
+#     comment = Comment(_id=replyId, user=User(userId=userId, username=username), text=text, replies=[]).model_dump(by_alias=True, exclude_none=True)
+    
+#     filter = {'_id' : ObjectId(campaignId)}
+#     update_operation = {'$push' : {'comments.$[c].replies' : comment}}
+#     # we store comment Id as a string, not a ObjectId
+#     array_filters = [{'c._id' : commentId}]
+#     result = campaigns.update_one(filter, update_operation, array_filters=array_filters)
+    
+#     if result.modified_count == 0:
+#         raise Exception("Failed to add reply")
+    
+#     return replyId
 
 def create_reply(mongo_client, commentId : str, userId: int, text : str, campaignId: str):
     db_name = os.getenv("DB_NAME")
     
     db = mongo_client[db_name]
+    comments = db['comments']
     campaigns = db['campaigns']
     
     doc = campaigns.find_one({"_id" : ObjectId(campaignId)})
@@ -58,18 +118,19 @@ def create_reply(mongo_client, commentId : str, userId: int, text : str, campaig
         raise Exception("Campaign not found")
     
     username = _get_username(userId)
+    reply = {
+        'campaignId' : ObjectId(campaignId),
+        'parentId' : ObjectId(commentId),
+        'user' : {
+            'userId' : userId,
+            'username' : username
+        },
+        'text' : text,
+    }
     
+    result = comments.insert_one(reply)
     
-    replyId = str(ObjectId())
-    comment = Comment(_id=replyId, user=User(userId=userId, username=username), text=text, replies=[]).model_dump(by_alias=True, exclude_none=True)
-    
-    filter = {'_id' : ObjectId(campaignId)}
-    update_operation = {'$push' : {'comments.$[c].replies' : comment}}
-    # we store comment Id as a string, not a ObjectId
-    array_filters = [{'c._id' : commentId}]
-    result = campaigns.update_one(filter, update_operation, array_filters=array_filters)
-    
-    if result.modified_count == 0:
+    if result.inserted_id is None:
         raise Exception("Failed to add reply")
     
-    return replyId
+    return str(result.inserted_id)

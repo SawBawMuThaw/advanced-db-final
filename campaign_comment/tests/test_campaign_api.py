@@ -47,7 +47,6 @@ def mock_db(mock_mongo_client):
         hour = random.randint(0, 23)
         minute = random.randint(0, 59)
         created = datetime(year, month, day, hour, minute, 0)
-        comments = []
         
         doc = {
             '_id': ObjectId(id),
@@ -66,7 +65,7 @@ def mock_db(mock_mongo_client):
                 'likedBy': likedBy,
                 'created': created
             },
-            'comments': comments
+            'reports' : []
         }
         docs.append(doc)
     db.campaigns.insert_many(docs)
@@ -89,7 +88,7 @@ def test_campaign_get(mock_db, mock_mongo_client, monkeypatch):
     # print(doc)
     
     assert result.status_code == 200
-    assert result.json() == doc
+    assert result.json()['campaign'] == doc
     
     
 def test_campaign_get_all(mock_db, monkeypatch, mock_mongo_client):
@@ -98,13 +97,13 @@ def test_campaign_get_all(mock_db, monkeypatch, mock_mongo_client):
     result = test_client.get(f"/campaign?page={page}")
     
     assert result.status_code == 200
-    assert len(result.json()) == 6
+    assert len(result.json()['campaigns']) == 6
     
     page = 2
     result = test_client.get(f"/campaign?page={page}")
     
     assert result.status_code == 200
-    assert len(result.json()) == 4
+    assert len(result.json()['campaigns']) == 4
     
 
 class MockUserResponse:
@@ -141,7 +140,7 @@ def test_campaign_create_campaign(mock_db, monkeypatch, mock_mongo_client):
     result = test_client.post("/campaign", json=payload)
     
     assert result.status_code == 200
-    response_json = result.json()
+    response_json = result.json()['campaignId']
     
     doc = mock_db.campaigns.find_one({'_id' : ObjectId(response_json)})
     assert doc is not None
@@ -253,7 +252,7 @@ def test_find_campaign_by_title(mock_db, monkeypatch, mock_mongo_client):
     title = doc['info']['title']
     
     response = test_client.get(f"/search?title={title}")
-    result = response.json()
+    result = response.json()['campaigns']
     
     assert response.status_code == 200
     assert len(result) == 1
@@ -269,7 +268,7 @@ def test_find_campaign_by_owner(mock_db, monkeypatch, mock_mongo_client):
     ownerId = doc['info']['owner']['userId']
     
     response = test_client.get(f"/search/owner?ownerId={ownerId}")
-    result = response.json()
+    result = response.json()['campaigns']
     
     assert response.status_code == 200
     assert len(result) >= 1
@@ -277,6 +276,13 @@ def test_find_campaign_by_owner(mock_db, monkeypatch, mock_mongo_client):
     
 def test_like_campaign(mock_db, monkeypatch, mock_mongo_client):
     monkeypatch.setenv("DB_NAME", "charitydb")
+    monkeypatch.setenv("USER_SERVICE_URL", "http://test-user-service")
+    app.dependency_overrides[get_mongo_client] = lambda: mock_mongo_client
+    
+    def mock_get(*args, **kwargs):
+        return MockUserResponse()
+    monkeypatch.setattr(requests, 'get', mock_get)
+    
     app.dependency_overrides[get_mongo_client] = lambda: mock_mongo_client
     
     campaign_id = str(uuids[6])

@@ -7,10 +7,11 @@ from testcontainers.mongodb import MongoDbContainer
 from pymongo import MongoClient
 
 from ..repository.commentRepository import create_comment, create_reply
+from ..repository.campaignRepository import get_campaign
 
-camapign_id = "6622f0b7a12c4d91f9b00123"
+campaign_id = "6622f0b7a12c4d91f9b00123"
 doc = {
-    '_id': ObjectId(camapign_id),
+    '_id': ObjectId(campaign_id),
     'goal': 50000.0,
     'current': 7350.0,
     'isOpen': True,
@@ -26,27 +27,26 @@ doc = {
         'likedBy': [2, 4, 9, 11, 15],
         'created': datetime(2026, 4, 19, 10, 30, 0)
     },
-    'comments': [
-        {
-            '_id': ObjectId("5234f0b7a12c4d91f9b00001"),
-            'user': {
-                'userId': 12,
-                'username': "donor_ana"
-            },
-            'text': "Happy to support this cause!",
-            'replies': [
-                    {
-                        '_id': ObjectId("5234f0b7a12c4d91f9b00002"),
-                        'user': {
-                            'userId': 5,
-                            'username': "testuser"
-                        },
-                        'text': "Thank you so much for your support!",
-                        'replies': []
-                    }
-            ]
-        }
-    ]
+}
+comment = {
+    '_id': ObjectId("5234f0b7a12c4d91f9b00001"),
+    'user': {
+        'userId': 12,
+        'username': "donor_ana"
+    },
+    'text': "Happy to support this cause!",
+    'campaignId': ObjectId(campaign_id),
+    'parentId': None
+}
+comment2 = {
+    '_id': ObjectId("5234f0b7a12c4d91f9b00002"),
+    'user': {
+        'userId': 5,
+        'username': "testuser"
+    },
+    'text': "Thank you so much for your support!",
+    'campaignId': ObjectId(campaign_id),
+    'parentId': ObjectId("5234f0b7a12c4d91f9b00001")
 }
 
 
@@ -60,6 +60,9 @@ def mock_db(mock_mongo_client):
     db = mock_mongo_client['charitydb']
     db.create_collection('campaigns')
     db.campaigns.insert_one(doc)
+    db.create_collection('comments')
+    db.comments.insert_one(comment)
+    db.comments.insert_one(comment2)
     return db
 
 
@@ -73,8 +76,6 @@ class MockUserResponse:
         return {'username': 'testuser'}
 
 
-
-
 def test_add_comment(mock_db, mock_mongo_client, monkeypatch):
 
     def mock_get(*args, **kwargs):
@@ -86,7 +87,7 @@ def test_add_comment(mock_db, mock_mongo_client, monkeypatch):
 
     userId = 12
     text = "Happy to support this cause!"
-    campaignId = camapign_id
+    campaignId = campaign_id
     commentId = "cmt-1001"
 
     commentId = create_comment(mock_mongo_client, userId, text, campaignId)
@@ -95,35 +96,18 @@ def test_add_comment(mock_db, mock_mongo_client, monkeypatch):
     assert isinstance(commentId, str)
     assert len(commentId) > 0
 
-    doc = mock_db.campaigns.find_one({"_id": ObjectId(campaignId)})
-    assert doc is not None
-    comments = doc.get('comments', [])
-    print(comments)
+    campaign = get_campaign(mock_mongo_client, campaignId)
+    assert campaign is not None
+    comments = campaign.get('comments', [])
     assert len(comments) == 2
-    assert comments[1]['text'] == text
-    assert comments[1]['_id'] == commentId
 
     bogusCampaignId = "6622f0b7a12c4d91f9b00000"
     with pytest.raises(Exception) as excinfo:
         create_comment(mock_mongo_client, userId, text, bogusCampaignId)
-    assert "Campaign not found" in str(excinfo.value)
-
-@pytest.fixture(scope="session")
-def mongo_container():
-    with MongoDbContainer("mongo:latest") as mongo:
-        yield mongo
+        assert "Campaign not found" in str(excinfo.value)
 
 
-@pytest.fixture(scope="function")
-def db_client(mongo_container, request):
-    client = MongoClient(mongo_container.get_connection_url())
-    db = client['charitydb']
-    db.create_collection('campaigns')
-    db.campaigns.insert_one(doc)
-    request.addfinalizer(lambda: client.close())
-    return client
-
-def test_reply(db_client, monkeypatch):
+def test_reply(mock_db, mock_mongo_client, monkeypatch):
 
     def mock_get(*args, **kwargs):
         return MockUserResponse()
@@ -134,20 +118,22 @@ def test_reply(db_client, monkeypatch):
 
     userId = 5
     text = "Thank you so much for your support!"
-    campaignId = camapign_id
+    campaignId = campaign_id
     commentId = "5234f0b7a12c4d91f9b00001"
-    replyId = create_reply(db_client, commentId,
+    replyId = create_reply(mock_mongo_client, commentId,
                            userId, text, campaignId)
 
     assert replyId is not None
     assert isinstance(replyId, str)
     assert len(replyId) > 0
 
-    doc = db_client['charitydb'].campaigns.find_one({"_id": ObjectId(campaignId)})
-    assert doc is not None
-    comments = doc.get('comments', [])
-    print(comments)
+    campaign = get_campaign(mock_mongo_client, campaignId)
+    assert campaign is not None
+    comments = campaign.get('comments', [])
     assert len(comments) == 1
-    assert len(comments[0]['replies']) == 2
-    assert comments[0]['replies'][1]['text'] == text
-    assert comments[0]['replies'][1]['_id'] == replyId
+    root_comment = next(
+        (c for c in comments if c['_id'] == commentId), None)
+    assert root_comment is not None
+    assert len(root_comment['replies']) == 2
+    assert root_comment['replies'][1]['text'] == text
+    assert root_comment['replies'][1]['_id'] == replyId

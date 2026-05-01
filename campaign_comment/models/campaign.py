@@ -22,7 +22,7 @@ class Campaign(BaseModel):
     available : float = Field(default=0) # track of amount of money available to withdraw
     isOpen : bool = Field(default=True)
     info : Info
-    comments : List[Comment] = Field(default=[])
+    comments : List = Field(default=[])
     reports : List[Report] = Field(default=[])
       
     model_config = ConfigDict(populate_by_name=True)

@@ -3,7 +3,7 @@ from mongomock import MongoClient as MockMongoClient
 import pytest
 from ..repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, like_campaign, update_campaign
 from ..repository.campaignRepository import increment_campaign_current, decrement_campaign_current
-from ..repository.campaignRepository import find_campaign_by_title, find_campaign_by_owner
+from ..repository.campaignRepository import find_campaign_by_title, find_campaign_by_owner, get_comments
 from datetime import datetime
 from bson import ObjectId
 import requests
@@ -218,8 +218,49 @@ def test_decrement_campaign_current(mock_mongo_client, mock_db, campaign_id, mon
     amount = 10000
     with pytest.raises(Exception) as excinfo:
         result = decrement_campaign_current(mock_mongo_client, campaign_id = campaign_id, amount = amount)
-        
-        assert excinfo.value == "Amount exceeds campaign current"
+
+
+def test_get_comments_nests_replies(mock_mongo_client, monkeypatch, campaign_id):
+    monkeypatch.setenv("DB_NAME", 'charitydb')
+
+    db = mock_mongo_client['charitydb']
+    comments = db['comments']
+
+    root_id = ObjectId("5234f0b7a12c4d91f9b00001")
+    child_id = ObjectId("5234f0b7a12c4d91f9b00002")
+    grandchild_id = ObjectId("5234f0b7a12c4d91f9b00003")
+
+    comments.insert_many([
+        {
+            '_id': root_id,
+            'campaignId': ObjectId(campaign_id),
+            'parentId': None,
+            'user': {'userId': 12, 'username': 'donor_ana'},
+            'text': 'Happy to support this cause!'
+        },
+        {
+            '_id': child_id,
+            'campaignId': ObjectId(campaign_id),
+            'parentId': root_id,
+            'user': {'userId': 5, 'username': 'testuser'},
+            'text': 'Thank you so much for your support!'
+        },
+        {
+            '_id': grandchild_id,
+            'campaignId': ObjectId(campaign_id),
+            'parentId': child_id,
+            'user': {'userId': 8, 'username': 'helper'},
+            'text': 'Glad to help too!'
+        }
+    ])
+
+    nested_comments = get_comments(mock_mongo_client, campaign_id)
+
+    assert len(nested_comments) == 1
+    assert nested_comments[0]['_id'] == str(root_id)
+    assert nested_comments[0]['replies'][0]['_id'] == str(child_id)
+    assert nested_comments[0]['replies'][0]['replies'][0]['_id'] == str(grandchild_id)
+    
 
 def test_find_campaign_by_title(mock_mongo_client, mock_db, campaign_id, monkeypatch):
     monkeypatch.setenv("DB_NAME", 'charitydb')
@@ -245,6 +286,8 @@ def test_find_campaign_by_owner(mock_mongo_client, mock_db, campaign_id, monkeyp
     
 def test_like_campaign(mock_mongo_client, mock_db, campaign_id, monkeypatch):
     monkeypatch.setenv("DB_NAME", 'charitydb')
+    monkeypatch.setattr(requests, 'get', lambda *args, **kwargs: MockUserResponse())
+    monkeypatch.setenv("USER_SERVICE_URL", "http://test-user-service")
     
     userId = 20
     
@@ -266,4 +309,9 @@ def test_like_campaign(mock_mongo_client, mock_db, campaign_id, monkeypatch):
         result = like_campaign(mock_mongo_client, campaign_id, userId)
         
         assert excinfo.value == "User has already liked this campaign"
+        
+    with pytest.raises(Exception) as excinfo:
+        result = like_campaign(mock_mongo_client, campaign_id, userId=999)
+        
+        assert excinfo.value == "User not found"
         
