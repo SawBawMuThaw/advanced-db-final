@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi import Body
 from dotenv import load_dotenv
 
+from .auth import TokenPayload                         
 from .models.schemas import (
     CampaignUpdate,
     LoginRequest,
@@ -20,23 +21,21 @@ from .models.schemas import (
     CampaignCreate,
     DonationCreate,
     CommentCreate,
-    ReportCreate
+    ReportCreate,
 )
 
 # ---------------------------------------------------------------------------
-# LOAD ENV (IMPORTANT FIX)
+# ENV
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ENV_PATH = os.path.join(BASE_DIR, ".env")
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-load_dotenv(ENV_PATH)
-
-DONATION_USER_URL = os.getenv("DONATION_USER_SERVICE")
+DONATION_USER_URL   = os.getenv("DONATION_USER_SERVICE")
 CAMPAIGN_COMMENT_URL = os.getenv("CAMPAIGN_COMMENT_SERVICE")
-SAGA_URL = os.getenv("SAGA_SERVICE")
+SAGA_URL             = os.getenv("SAGA_SERVICE")
 
 if not all([DONATION_USER_URL, CAMPAIGN_COMMENT_URL, SAGA_URL]):
-    raise RuntimeError("❌ Missing environment variables in .env")
+    raise RuntimeError("Missing environment variables in .env")
 
 # ---------------------------------------------------------------------------
 # APP
@@ -45,13 +44,24 @@ app = FastAPI(title="API Gateway", version="1.0.0")
 
 
 # ---------------------------------------------------------------------------
-# SAFE PROXY (FIX JSON ERROR HERE)
+# PROXY HELPER
 # ---------------------------------------------------------------------------
-async def _proxy(method: str, url: str, request: Request, body: Any = None) -> JSONResponse:
+async def _proxy(
+    method: str,
+    url: str,
+    request: Request,
+    body: Any = None,
+    *,
+    extra_headers: dict[str, str] | None = None,
+) -> JSONResponse:
     headers = {
         k: v for k, v in request.headers.items()
         if k.lower() not in ("host", "content-length")
     }
+    headers = {k: v for k, v in headers.items() if not k.lower().startswith("x-user-")}
+
+    if extra_headers:
+        headers.update(extra_headers)
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
@@ -59,16 +69,23 @@ async def _proxy(method: str, url: str, request: Request, body: Any = None) -> J
         except httpx.RequestError as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Upstream error: {exc}"
+                detail=f"Upstream error: {exc}",
             )
 
-    # ✅ CRITICAL FIX: avoid JSONDecodeError
     try:
         data = resp.json()
     except Exception:
         data = resp.text
 
     return JSONResponse(content=data, status_code=resp.status_code)
+
+
+def _user_headers(token: dict) -> dict[str, str]:
+    return {
+        "X-User-Id":    str(token.get("sub", "")),
+        "X-User-Email": str(token.get("email", "")),
+        "X-User-Role":  str(token.get("role", "")),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +127,7 @@ async def campaign_ws(ws: WebSocket, campaign_id: str):
 
 
 # ---------------------------------------------------------------------------
-# AUTH
+# AUTH (public)
 # ---------------------------------------------------------------------------
 @app.post("/login")
 async def login(body: LoginRequest, request: Request):
@@ -128,17 +145,31 @@ async def get_user(id: int, request: Request):
 
 
 # ---------------------------------------------------------------------------
-# DONATION (Saga)
+# DONATION — protected
 # ---------------------------------------------------------------------------
 @app.post("/donate")
-async def donate(body: DonationCreate, request: Request):
-    response = await _proxy("POST", f"{SAGA_URL}/donate", request, body.dict())
+async def donate(
+    body: DonationCreate,
+    request: Request,
+    token: TokenPayload,                           # ← enforces auth
+):
+    # UserID comes from the verified token, not the request body
+    payload = body.dict()
+    payload["userID"] = int(token["sub"])          # overwrite / set from token
+
+    response = await _proxy(
+        "POST",
+        f"{SAGA_URL}/donate",
+        request,
+        payload,
+        extra_headers=_user_headers(token),
+    )
 
     if response.status_code == 200:
         asyncio.create_task(
             _ws_mgr.broadcast({
                 "event": "counter_refresh",
-                "campaignId": body.campaignID
+                "campaignId": body.campaignID,
             })
         )
 
@@ -154,8 +185,21 @@ async def get_donations(campaign_id: str, request: Request):
 # CAMPAIGN
 # ---------------------------------------------------------------------------
 @app.post("/campaign")
-async def create_campaign(body: CampaignCreate, request: Request):
-    return await _proxy("POST", f"{SAGA_URL}/campaign", request, body.dict())
+async def create_campaign(
+    body: CampaignCreate,
+    request: Request,
+    token: TokenPayload,                           # ← protected
+):
+    payload = body.dict()
+    payload["ownerId"] = int(token["sub"])         # set from token
+
+    return await _proxy(
+        "POST",
+        f"{SAGA_URL}/campaign",
+        request,
+        payload,
+        extra_headers=_user_headers(token),
+    )
 
 
 @app.get("/campaign")
@@ -169,50 +213,145 @@ async def get_campaign(id: str, request: Request):
 
 
 @app.put("/campaign/{id}")
-async def update_campaign(id: str, body: Annotated[CampaignUpdate, Body()], request: Request):
-    return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/campaign/{id}", request, body.dict())
-
-# this one isn't needed on gateway
-# @app.put("/increment/{id}/{amount}")
-# async def increment(id: str, amount: float, request: Request):
-#     return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/increment/{id}/{amount}", request)
-
-
-# ---------------------------------------------------------------------------
-# COMMENTS
-# ---------------------------------------------------------------------------
-@app.post("/comment")
-async def comment(body: CommentCreate, request: Request):
-    return await _proxy("POST", f"{SAGA_URL}/comment", request, body.dict())
-
-
-@app.put("/reply/{id}")
-async def reply(id: str, body: CommentCreate, request: Request):
-    return await _proxy("PUT", f"{SAGA_URL}/reply/{id}", request, body.dict())
-
-
-# ---------------------------------------------------------------------------
-# REPORT
-# ---------------------------------------------------------------------------
-@app.post("/report")
-async def report(body: ReportCreate, request: Request):
-    return await _proxy("POST", f"{SAGA_URL}/report", request, body.dict())
-
-
-# ---------------------------------------------------------------------------
-# LIKE
-# ---------------------------------------------------------------------------
-@app.put("/like/{campaign_id}/{user_id}")
-async def like(campaign_id: str, user_id: int, request: Request):
+async def update_campaign(
+    id: str,
+    body: Annotated[CampaignUpdate, Body()],
+    request: Request,
+    token: TokenPayload,                           # ← protected
+):
     return await _proxy(
         "PUT",
-        f"{CAMPAIGN_COMMENT_URL}/like/{campaign_id}/{user_id}",
-        request
+        f"{CAMPAIGN_COMMENT_URL}/campaign/{id}",
+        request,
+        body.dict(),
+        extra_headers=_user_headers(token),
     )
 
 
 # ---------------------------------------------------------------------------
-# HEALTH
+# COMMENTS — protected
+# ---------------------------------------------------------------------------
+@app.post("/comment")
+async def comment(
+    body: CommentCreate,
+    request: Request,
+    token: TokenPayload,
+):
+    payload = body.dict()
+    payload["userId"] = int(token["sub"])
+
+    return await _proxy(
+        "POST",
+        f"{SAGA_URL}/comment",
+        request,
+        payload,
+        extra_headers=_user_headers(token),
+    )
+
+
+@app.put("/reply/{id}")
+async def reply(
+    id: str,
+    body: CommentCreate,
+    request: Request,
+    token: TokenPayload,
+):
+    payload = body.dict()
+    payload["userId"] = int(token["sub"])
+
+    return await _proxy(
+        "PUT",
+        f"{SAGA_URL}/reply/{id}",
+        request,
+        payload,
+        extra_headers=_user_headers(token),
+    )
+
+
+# ---------------------------------------------------------------------------
+# REPORT — protected
+# ---------------------------------------------------------------------------
+@app.post("/report")
+async def report(
+    body: ReportCreate,
+    request: Request,
+    token: TokenPayload,
+):
+    return await _proxy(
+        "POST",
+        f"{SAGA_URL}/report",
+        request,
+        body.dict(),
+        extra_headers=_user_headers(token),
+    )
+
+
+# ---------------------------------------------------------------------------
+# IMAGE UPLOAD — protected 
+# ---------------------------------------------------------------------------
+@app.post("/image/{report_id}/{campaign_id}")
+async def upload_image(
+    report_id: str,
+    campaign_id: str,
+    request: Request,
+    token: TokenPayload,
+):
+
+    headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in ("host",)
+        and not k.lower().startswith("x-user-")
+    }
+    headers.update(_user_headers(token))
+
+    body_bytes = await request.body()
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            resp = await client.post(
+                f"{SAGA_URL}/image/{report_id}/{campaign_id}",
+                headers=headers,
+                content=body_bytes,
+            )
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=502, detail=f"Upstream error: {exc}")
+
+    try:
+        data = resp.json()
+    except Exception:
+        data = resp.text
+
+    return JSONResponse(content=data, status_code=resp.status_code)
+
+
+# ---------------------------------------------------------------------------
+# LIKE — protected
+# ---------------------------------------------------------------------------
+@app.put("/like/{campaign_id}/{user_id}")
+async def like(
+    campaign_id: str,
+    user_id: int,
+    request: Request,
+    token: TokenPayload,
+):
+    # Prevent a user from liking as someone else
+    token_user_id = int(token["sub"])
+    if token_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="user_id in path must match authenticated user",
+        )
+
+    return await _proxy(
+        "PUT",
+        f"{CAMPAIGN_COMMENT_URL}/like/{campaign_id}/{user_id}",
+        request,
+        extra_headers=_user_headers(token),
+    )
+
+
+# ---------------------------------------------------------------------------
+# HEALTH (public)
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health():
