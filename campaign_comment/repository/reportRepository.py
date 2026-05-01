@@ -1,4 +1,5 @@
 from datetime import datetime
+import dotenv
 from fastapi import UploadFile
 from typing import List
 from pymongo import MongoClient
@@ -6,6 +7,8 @@ import os
 from bson import ObjectId
 from ..models.report import Report
 import hashlib
+
+dotenv.load_dotenv('../.env')
 
 def create_report(mongo_client: MongoClient, campaign_id : str, reportTitle : str, amount : float):
     db_name = os.getenv("DB_NAME")

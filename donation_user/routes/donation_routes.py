@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, status
 
-from models.donation import (
+from ..models.donation import (
     CampaignDonationsResponse,
     DonationCreate,
     DonationResponse,
     DonorDetail,
 )
-from repository.donation_repo import DonationRepository
+from ..repository.donation_repo import DonationRepository
 
 router = APIRouter(tags=["donations"])
 _donations = DonationRepository()

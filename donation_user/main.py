@@ -1,8 +1,8 @@
 from fastapi import FastAPI
  
-from routes.auth_routes import router as auth_router
-from routes.donation_routes import router as donation_router
-from routes.user_routes import router as user_router
+from .routes.auth_routes import router as auth_router
+from .routes.donation_routes import router as donation_router
+from .routes.user_routes import router as user_router
  
 app = FastAPI(title="Donation & User Service", version="1.0.0")
  

@@ -1,6 +1,8 @@
 from typing import List
 
 from fastapi import FastAPI, HTTPException, UploadFile, status
+
+from .models.UpdateCampaignInput import UpdateCampaignInput
 from .models.DonationInput import DonationInput
 from .models.CampaignInput import CampaignInput
 from .models.CommentInput import CommentInput
@@ -65,7 +67,7 @@ def create_campaign(input : CampaignInput):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create campaign")
     
     campaign_id = response.json().get('campaignId')
-    return campaign_id
+    return {'campaignId' : campaign_id}
 
 @app.post("/comment")
 def create_comment(input : CommentInput):
@@ -89,9 +91,9 @@ def create_comment(input : CommentInput):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create comment")
     
     comment_id = response.json().get('commentId')
-    return comment_id
+    return {'commentId' : comment_id}
 
-@app.post("/reply/{id}")
+@app.put("/reply/{id}")
 def create_reply(id : str, input : CommentInput):
     campaign_url = os.getenv("CAMPAIGN_COMMENT_SERVICE")
     
@@ -107,13 +109,13 @@ def create_reply(id : str, input : CommentInput):
         "text" : input.text
     }
     
-    response = requests.post(campaign_url + f"/reply/{id}", json=payload)
+    response = requests.put(campaign_url + f"/reply/{id}", json=payload)
     
     if response.status_code != 200:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create reply")
     
     reply_id = response.json().get('replyId')
-    return reply_id
+    return {'replyId' : reply_id}
 
 @app.post("/register")
 def create_user(input: UserInput):
@@ -131,7 +133,7 @@ def create_user(input: UserInput):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create user")
     
     user_id = response.json().get('userId')
-    return user_id
+    return {'userId' : user_id}
 
 @app.post('/report')
 def create_report(input: ReportInput): 
@@ -153,7 +155,7 @@ def create_report(input: ReportInput):
     if response.status_code != 200:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create report")
     report_id = response.json().get('reportId')
-    return report_id
+    return {'reportId' : report_id}
 
 @app.post('/image/{reportId}/{campaignId}')
 def upload_image(reportId : str, campaignId : str, images : List[UploadFile]):
@@ -175,7 +177,7 @@ def upload_image(reportId : str, campaignId : str, images : List[UploadFile]):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload images")
     
     image_names = response.json().get('imageNames')
-    return image_names
+    return {'imageNames' : image_names}
 
 @app.put("/like/{campaignId}/{userId}")
 def like_campaign(campaignId : str, userId : int):
@@ -190,3 +192,28 @@ def like_campaign(campaignId : str, userId : int):
     
     if response.status_code != 200:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to like campaign")
+    
+@app.put('/campaign/{id}')
+def update_campaign(id : str, input : UpdateCampaignInput):
+    campaign_url = os.getenv("CAMPAIGN_COMMENT_SERVICE")
+    
+    # check if campaign exists
+    response = requests.get(campaign_url + f"/campaign/{id}")
+    if response.status_code == 404:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    
+    payload = {}
+    
+    if input.title is not None:
+        payload["title"] = input.title
+    if input.description is not None:
+        payload["description"] = input.description
+    if input.close is not None:
+        payload["close"] = input.close
+    if input.videolink is not None:
+        payload["videolink"] = input.videolink
+
+    response = requests.put(campaign_url + f"/campaign/{id}", json=payload)
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update campaign")

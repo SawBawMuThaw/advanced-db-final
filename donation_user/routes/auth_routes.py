@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 
-from auth.hashing import hash_password, verify_password
-from auth.jwt import create_access_token
-from models.auth import LoginRequest, LoginResponse, RegisterRequest, RegisterResponse
-from repository.user_repo import UserRepository
+from ..auth.hashing import hash_password, verify_password
+from ..auth.jwt import create_access_token
+from ..models.auth import LoginRequest, LoginResponse, RegisterRequest, RegisterResponse
+from ..repository.user_repo import UserRepository
 
 router = APIRouter(tags=["auth"])
 _users = UserRepository()
