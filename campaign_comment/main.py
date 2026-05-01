@@ -166,3 +166,5 @@ def like_campaign_endpoint(mongo_client: Annotated[MongoClient, Depends(get_mong
             raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
         if str(e) == "User has already liked this campaign":
             raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="User has already liked this campaign")
+        if str(e) == "User not found":
+            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="User not found")

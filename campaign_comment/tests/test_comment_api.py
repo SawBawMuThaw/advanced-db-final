@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 from ..main import app, get_mongo_client
 import requests
+from ..repository.campaignRepository import get_campaign
 
 campaign_id = "6622f0b7a12c4d91f9b00001"
 
@@ -29,24 +30,32 @@ def mock_mongo_client(mongo_container, request):
     if len(list(docs)) == 0:
         doc = {
             "_id": ObjectId(campaign_id),
-            "title": "Save the Rainforest",
-            "description": "Help us protect the rainforest and its biodiversity.",
-            "videolink": "https://example.com/rainforest-video",
-            "ownerId": 1,
-            "createdAt": datetime.now(),
+            "info" : {
+                "title": "Save the Rainforest",
+                "description": "Help us protect the rainforest and its biodiversity.",
+                "videolink": "https://example.com/rainforest-video",
+                "owner" : {
+                    "userId": 5,
+                    "username": "testuser"
+                },
+                "created": datetime.now(),
+                'likes' : 10,
+                'likedBy' : [1, 2, 3, 4, 5],
+            },
             "goal": 10000.0,
             "current": 5000.0,
             "close": False,
-            "comments": [
-                {
-                    "_id": ObjectId("6622f0b7a12c4d91f9b00002"),
-                    "userId": 10,
-                    "text": "Great initiative! Happy to support.",
-                    "replies": []
-                }
-            ]
+            "reports": []
         }
         db.campaigns.insert_one(doc)
+        comment = {
+            "_id": ObjectId("6622f0b7a12c4d91f9b00002"),
+            "userId": 10,
+            "text": "Great initiative! Happy to support.",
+            "campaignId": ObjectId(campaign_id),
+            "parentId": None,
+        }
+        db.comments.insert_one(comment)
     request.addfinalizer(lambda: client.close())
     return client
 
@@ -86,8 +95,7 @@ def test_post_comment(mock_mongo_client, monkeypatch):
 
     print(response)
 
-    doc = mock_mongo_client['charitydb'].campaigns.find_one(
-        {'_id': ObjectId(campaign_id)})
+    doc = get_campaign(mock_mongo_client, campaign_id)
     assert len(doc['comments']) == 2
     new_comment = doc['comments'][1]
     assert new_comment['user']['userId'] == payload['userId']
@@ -123,10 +131,9 @@ def test_post_reply(mock_mongo_client, monkeypatch):
 
     print(response)
 
-    doc = mock_mongo_client['charitydb'].campaigns.find_one(
-        {'_id': ObjectId(campaign_id)})
-    comment = next(c for c in doc['comments'] if c['_id']
-                   == ObjectId("6622f0b7a12c4d91f9b00002"))
+    doc = get_campaign(mock_mongo_client, campaign_id)
+    comment = next((c for c in doc['comments'] if c['_id'] == commentId), None)
+    assert comment is not None
     assert len(comment['replies']) == 1
     new_reply = comment['replies'][0]
     assert new_reply['user']['userId'] == payload['userId']

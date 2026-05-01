@@ -16,7 +16,6 @@ def create_campaign(mongo_client, title : str, description : str, videolink : st
     
     db = mongo_client[db_name]
     
-    
     if 'campaigns' not in db.list_collection_names():
         db.create_collection('campaigns')
     
@@ -38,6 +37,33 @@ def create_campaign(mongo_client, title : str, description : str, videolink : st
 
     return str(result.inserted_id)
 
+def get_comments(mongo_client, campaign_id : str):
+    db_name = os.getenv("DB_NAME")
+    db = mongo_client[db_name]
+    collection = db['comments']
+    
+    results = list(collection.find({"campaignId" : ObjectId(campaign_id)}))
+
+    comments_by_id = {}
+    roots = []
+
+    for comment in results:
+        comment['_id'] = str(comment['_id'])
+        if comment.get('parentId') is not None:
+            comment['parentId'] = str(comment['parentId'])
+        comment['replies'] = []
+        comments_by_id[comment['_id']] = comment
+
+    for comment in results:
+        parent_id = comment.get('parentId')
+
+        if parent_id and parent_id in comments_by_id:
+            comments_by_id[parent_id]['replies'].append(comment)
+        elif parent_id is None:
+            roots.append(comment)
+
+    return roots
+
 def get_campaign(mongo_client, campaign_id : str):
     db_name = os.getenv("DB_NAME")
     
@@ -51,6 +77,7 @@ def get_campaign(mongo_client, campaign_id : str):
     
     result['_id'] = str(result['_id'])
     campaign = Campaign.model_validate(result)
+    campaign.comments = get_comments(mongo_client, campaign_id)
     return campaign.model_dump(by_alias=False, exclude_none=True)
 
 def get_all_campaigns(mongo_client, page : int | None = 1):
@@ -68,6 +95,7 @@ def get_all_campaigns(mongo_client, page : int | None = 1):
     for doc in results:
         doc['_id'] = str(doc['_id'])
         campaign = Campaign.model_validate(doc)
+        campaign.comments = get_comments(mongo_client, campaign.campaignID)
         campaigns.append(campaign.model_dump(by_alias=False, exclude_none=True))
     return campaigns
 
@@ -148,6 +176,7 @@ def find_campaign_by_title(mongo_client, title : str):
     for doc in results:
         doc['_id'] = str(doc['_id'])
         campaign = Campaign.model_validate(doc)
+        campaign.comments = get_comments(mongo_client, campaign.campaignID)
         campaigns.append(campaign.model_dump(by_alias=False, exclude_none=True))
     
     return campaigns
@@ -164,12 +193,14 @@ def find_campaign_by_owner(mongo_client, ownerId : int):
     for doc in results:
         doc['_id'] = str(doc['_id'])
         campaign = Campaign.model_validate(doc)
+        campaign.comments = get_comments(mongo_client, campaign.campaignID)  
         campaigns.append(campaign.model_dump(by_alias=False, exclude_none=True))
     
     return campaigns
 
 def like_campaign(mongo_client, campaign_id : str, userId : int):
     db_name = os.getenv("DB_NAME")
+    user_service = os.getenv("USER_SERVICE_URL")
     
     db = mongo_client[db_name]
     collection = db['campaigns']
@@ -180,6 +211,10 @@ def like_campaign(mongo_client, campaign_id : str, userId : int):
     
     if doc is None:
         raise Exception("Campaign not found")
+    
+    response = requests.get(user_service + f"/user/{userId}")
+    if response.status_code != 200:
+        raise Exception("User not found")
     
     if userId in doc['info']['likedBy']:
         raise Exception("User has already liked this campaign")
