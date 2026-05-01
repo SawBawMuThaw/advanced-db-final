@@ -49,6 +49,7 @@ def get_comments(mongo_client, campaign_id : str):
 
     for comment in results:
         comment['_id'] = str(comment['_id'])
+        comment['campaignId'] = str(comment['campaignId'])
         if comment.get('parentId') is not None:
             comment['parentId'] = str(comment['parentId'])
         comment['replies'] = []
@@ -76,6 +77,7 @@ def get_campaign(mongo_client, campaign_id : str):
         return None
     
     result['_id'] = str(result['_id'])
+    result['comments'] = get_comments(mongo_client, campaign_id)
     campaign = Campaign.model_validate(result)
     campaign.comments = get_comments(mongo_client, campaign_id)
     return campaign.model_dump(by_alias=False, exclude_none=True)

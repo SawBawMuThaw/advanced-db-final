@@ -172,10 +172,10 @@ async def get_campaign(id: str, request: Request):
 async def update_campaign(id: str, body: Annotated[CampaignUpdate, Body()], request: Request):
     return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/campaign/{id}", request, body.dict())
 
-
-@app.put("/increment/{id}/{amount}")
-async def increment(id: str, amount: float, request: Request):
-    return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/increment/{id}/{amount}", request)
+# this one isn't needed on gateway
+# @app.put("/increment/{id}/{amount}")
+# async def increment(id: str, amount: float, request: Request):
+#     return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/increment/{id}/{amount}", request)
 
 
 # ---------------------------------------------------------------------------
