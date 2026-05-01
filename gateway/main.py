@@ -1,230 +1,217 @@
-# """
-# gateway/main.py
+"""
+gateway/main.py – API Gateway (PORT 3000)
+"""
 
-# Thin API Gateway built with FastAPI.
-# Responsibilities:
-#   1. Route HTTP requests to the correct downstream service.
-#   2. Forward JWT (passed by the client) without validating it here –
-#      each service validates with its own public key.
-#   3. Expose a WebSocket endpoint so the UI can receive real-time
-#      'counter refresh' notifications after a successful donation.
+from __future__ import annotations
+import os
+import asyncio
+from typing import Any
 
-# Environment variables (set in .env or docker-compose):
-#     DONATION_USER_URL    e.g. http://donation_user:8001
-#     CAMPAIGN_COMMENT_URL e.g. http://campaign_comment:8002
-#     SAGA_URL             e.g. http://saga_orchestrator:8003
-# """
-# from __future__ import annotations
+import httpx
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
 
-# import asyncio
-# import logging
-# from typing import Any
+from .models.schemas import (
+    LoginRequest,
+    RegisterRequest,
+    CampaignCreate,
+    DonationCreate,
+    CommentCreate,
+    ReportCreate
+)
 
-# import httpx
-# from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
-# from fastapi.responses import JSONResponse
-# from pydantic_settings import BaseSettings
+# ---------------------------------------------------------------------------
+# LOAD ENV (IMPORTANT FIX)
+# ---------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, ".env")
 
-# # ---------------------------------------------------------------------------
-# # Settings
-# # ---------------------------------------------------------------------------
+load_dotenv(ENV_PATH)
 
-# class Settings(BaseSettings):
-#     DONATION_USER_URL: str = "http://localhost:8001"
-#     CAMPAIGN_COMMENT_URL: str = "http://localhost:8002"
-#     SAGA_URL: str = "http://localhost:8003"
+DONATION_USER_URL = os.getenv("DONATION_USER_SERVICE")
+CAMPAIGN_COMMENT_URL = os.getenv("CAMPAIGN_COMMENT_SERVICE")
+SAGA_URL = os.getenv("SAGA_SERVICE")
 
-#     class Config:
-#         env_file = ".env"
+if not all([DONATION_USER_URL, CAMPAIGN_COMMENT_URL, SAGA_URL]):
+    raise RuntimeError("❌ Missing environment variables in .env")
 
-
-# cfg = Settings()
-# logger = logging.getLogger("gateway")
-
-# # ---------------------------------------------------------------------------
-# # App
-# # ---------------------------------------------------------------------------
-
-# app = FastAPI(title="API Gateway", version="1.0.0")
-
-# # ---------------------------------------------------------------------------
-# # WebSocket connection manager
-# # ---------------------------------------------------------------------------
-
-# class _WSManager:
-#     def __init__(self):
-#         self._connections: list[WebSocket] = []
-
-#     async def connect(self, ws: WebSocket):
-#         await ws.accept()
-#         self._connections.append(ws)
-
-#     def disconnect(self, ws: WebSocket):
-#         self._connections.remove(ws)
-
-#     async def broadcast(self, data: dict):
-#         dead = []
-#         for ws in self._connections:
-#             try:
-#                 await ws.send_json(data)
-#             except Exception:
-#                 dead.append(ws)
-#         for ws in dead:
-#             self._connections.remove(ws)
+# ---------------------------------------------------------------------------
+# APP
+# ---------------------------------------------------------------------------
+app = FastAPI(title="API Gateway", version="1.0.0")
 
 
-# _ws_mgr = _WSManager()
+# ---------------------------------------------------------------------------
+# SAFE PROXY (FIX JSON ERROR HERE)
+# ---------------------------------------------------------------------------
+async def _proxy(method: str, url: str, request: Request, body: Any = None) -> JSONResponse:
+    headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in ("host", "content-length")
+    }
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.request(method, url, headers=headers, json=body)
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Upstream error: {exc}"
+            )
+
+    # ✅ CRITICAL FIX: avoid JSONDecodeError
+    try:
+        data = resp.json()
+    except Exception:
+        data = resp.text
+
+    return JSONResponse(content=data, status_code=resp.status_code)
 
 
-# @app.websocket("/ws/campaign/{campaign_id}")
-# async def campaign_ws(ws: WebSocket, campaign_id: str):
-#     """
-#     Client connects here to receive live counter updates for a campaign.
-#     Server pushes {"event": "counter_refresh", "campaignId": <id>} after
-#     each successful donation saga.
-#     """
-#     await _ws_mgr.connect(ws)
-#     try:
-#         while True:
-#             await ws.receive_text()   # keep-alive ping from client
-#     except WebSocketDisconnect:
-#         _ws_mgr.disconnect(ws)
+# ---------------------------------------------------------------------------
+# WEBSOCKET
+# ---------------------------------------------------------------------------
+class _WSManager:
+    def __init__(self):
+        self._connections: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self._connections.append(ws)
+
+    def disconnect(self, ws: WebSocket):
+        self._connections.remove(ws)
+
+    async def broadcast(self, data: dict):
+        dead = []
+        for ws in self._connections:
+            try:
+                await ws.send_json(data)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self._connections.remove(ws)
 
 
-# # ---------------------------------------------------------------------------
-# # Proxy helper
-# # ---------------------------------------------------------------------------
-
-# async def _proxy(
-#     method: str,
-#     url: str,
-#     request: Request,
-#     body: Any = None,
-# ) -> JSONResponse:
-#     headers = {
-#         k: v for k, v in request.headers.items()
-#         if k.lower() not in ("host", "content-length")
-#     }
-#     async with httpx.AsyncClient(timeout=10.0) as client:
-#         try:
-#             resp = await client.request(
-#                 method,
-#                 url,
-#                 headers=headers,
-#                 json=body,
-#             )
-#         except httpx.RequestError as exc:
-#             raise HTTPException(
-#                 status_code=status.HTTP_502_BAD_GATEWAY,
-#                 detail=f"Upstream error: {exc}",
-#             )
-#     return JSONResponse(content=resp.json(), status_code=resp.status_code)
+_ws_mgr = _WSManager()
 
 
-# # ---------------------------------------------------------------------------
-# # Auth routes  →  donation_user service
-# # ---------------------------------------------------------------------------
-
-# @app.post("/login")
-# async def login(request: Request):
-#     body = await request.json()
-#     return await _proxy("POST", f"{cfg.DONATION_USER_URL}/login", request, body)
-
-
-# @app.post("/register")
-# async def register(request: Request):
-#     body = await request.json()
-#     return await _proxy("POST", f"{cfg.DONATION_USER_URL}/register", request, body)
+@app.websocket("/ws/campaign/{campaign_id}")
+async def campaign_ws(ws: WebSocket, campaign_id: str):
+    await _ws_mgr.connect(ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        _ws_mgr.disconnect(ws)
 
 
-# @app.get("/user/{id}")
-# async def get_user(id: int, request: Request):
-#     return await _proxy("GET", f"{cfg.DONATION_USER_URL}/user/{id}", request)
+# ---------------------------------------------------------------------------
+# AUTH
+# ---------------------------------------------------------------------------
+@app.post("/login")
+async def login(body: LoginRequest, request: Request):
+    return await _proxy("POST", f"{DONATION_USER_URL}/login", request, body.dict())
 
 
-# # ---------------------------------------------------------------------------
-# # Donation  →  Saga Orchestrator
-# # ---------------------------------------------------------------------------
-
-# @app.post("/donate")
-# async def donate(request: Request):
-#     """
-#     Routes to the Saga Orchestrator which:
-#       1. Saves donation via donation_user service.
-#       2. Increments campaign counter via campaign_comment service.
-#       3. On success, notifies WebSocket subscribers.
-#     """
-#     body = await request.json()
-#     response = await _proxy("POST", f"{cfg.SAGA_URL}/donate", request, body)
-
-#     if response.status_code == 200:
-#         campaign_id = body.get("campaignID", "")
-#         asyncio.create_task(
-#             _ws_mgr.broadcast({"event": "counter_refresh", "campaignId": campaign_id})
-#         )
-#     return response
+@app.post("/register")
+async def register(body: RegisterRequest, request: Request):
+    return await _proxy("POST", f"{SAGA_URL}/register", request, body.dict())
 
 
-# @app.get("/donate/{campaign_id}")
-# async def get_campaign_donations(campaign_id: str, request: Request):
-#     return await _proxy(
-#         "GET",
-#         f"{cfg.DONATION_USER_URL}/donate/{campaign_id}",
-#         request,
-#     )
+@app.get("/user/{id}")
+async def get_user(id: int, request: Request):
+    return await _proxy("GET", f"{DONATION_USER_URL}/user/{id}", request)
 
 
-# # ---------------------------------------------------------------------------
-# # Campaign  →  Saga Orchestrator
-# # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# DONATION (Saga)
+# ---------------------------------------------------------------------------
+@app.post("/donate")
+async def donate(body: DonationCreate, request: Request):
+    response = await _proxy("POST", f"{SAGA_URL}/donate", request, body.dict())
 
-# @app.post("/campaign")
-# async def create_campaign(request: Request):
-#     body = await request.json()
-#     return await _proxy("POST", f"{cfg.SAGA_URL}/campaign", request, body)
+    if response.status_code == 200:
+        asyncio.create_task(
+            _ws_mgr.broadcast({
+                "event": "counter_refresh",
+                "campaignId": body.campaignID
+            })
+        )
 
-
-# @app.get("/campaign/{id}")
-# async def get_campaign(id: str, request: Request):
-#     return await _proxy("GET", f"{cfg.CAMPAIGN_COMMENT_URL}/campaign/{id}", request)
-
-
-# @app.get("/campaign")
-# async def list_campaigns(request: Request):
-#     page = request.query_params.get("page", "1")
-#     return await _proxy(
-#         "GET",
-#         f"{cfg.CAMPAIGN_COMMENT_URL}/campaign?page={page}",
-#         request,
-#     )
+    return response
 
 
-# @app.put("/campaign/{id}")
-# async def update_campaign(id: str, request: Request):
-#     body = await request.json()
-#     return await _proxy("PUT", f"{cfg.CAMPAIGN_COMMENT_URL}/campaign/{id}", request, body)
+@app.get("/donate/{campaign_id}")
+async def get_donations(campaign_id: str, request: Request):
+    return await _proxy("GET", f"{DONATION_USER_URL}/donate/{campaign_id}", request)
 
 
-# # ---------------------------------------------------------------------------
-# # Comments  →  Saga Orchestrator
-# # ---------------------------------------------------------------------------
-
-# @app.post("/comment")
-# async def post_comment(request: Request):
-#     body = await request.json()
-#     return await _proxy("POST", f"{cfg.SAGA_URL}/comment", request, body)
+# ---------------------------------------------------------------------------
+# CAMPAIGN
+# ---------------------------------------------------------------------------
+@app.post("/campaign")
+async def create_campaign(body: CampaignCreate, request: Request):
+    return await _proxy("POST", f"{SAGA_URL}/campaign", request, body.dict())
 
 
-# @app.put("/reply/{id}")
-# async def reply_comment(id: str, request: Request):
-#     body = await request.json()
-#     return await _proxy("PUT", f"{cfg.SAGA_URL}/reply/{id}", request, body)
+@app.get("/campaign")
+async def list_campaigns(page: int = 1, request: Request = None):
+    return await _proxy("GET", f"{CAMPAIGN_COMMENT_URL}/campaign?page={page}", request)
 
 
-# # ---------------------------------------------------------------------------
-# # Health
-# # ---------------------------------------------------------------------------
+@app.get("/campaign/{id}")
+async def get_campaign(id: str, request: Request):
+    return await _proxy("GET", f"{CAMPAIGN_COMMENT_URL}/campaign/{id}", request)
 
-# @app.get("/health")
-# def health():
-#     return {"status": "ok"}
+
+@app.put("/campaign/{id}")
+async def update_campaign(id: str, body: dict, request: Request):
+    return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/campaign/{id}", request, body)
+
+
+@app.put("/increment/{id}/{amount}")
+async def increment(id: str, amount: float, request: Request):
+    return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/increment/{id}/{amount}", request)
+
+
+# ---------------------------------------------------------------------------
+# COMMENTS
+# ---------------------------------------------------------------------------
+@app.post("/comment")
+async def comment(body: CommentCreate, request: Request):
+    return await _proxy("POST", f"{SAGA_URL}/comment", request, body.dict())
+
+
+@app.post("/reply/{id}")
+async def reply(id: str, body: CommentCreate, request: Request):
+    return await _proxy("POST", f"{SAGA_URL}/reply/{id}", request, body.dict())
+
+
+# ---------------------------------------------------------------------------
+# REPORT
+# ---------------------------------------------------------------------------
+@app.post("/report")
+async def report(body: ReportCreate, request: Request):
+    return await _proxy("POST", f"{SAGA_URL}/report", request, body.dict())
+
+
+# ---------------------------------------------------------------------------
+# LIKE
+# ---------------------------------------------------------------------------
+@app.put("/like/{campaign_id}/{user_id}")
+async def like(campaign_id: str, user_id: int, request: Request):
+    return await _proxy(
+        "PUT",
+        f"{CAMPAIGN_COMMENT_URL}/like/{campaign_id}/{user_id}",
+        request
+    )
+
+
+# ---------------------------------------------------------------------------
+# HEALTH
+# ---------------------------------------------------------------------------
+@app.get("/health")
+def health():
+    return {"status": "ok"}

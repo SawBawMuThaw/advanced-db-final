@@ -39,7 +39,7 @@ def record_donation(input: DonationInput):
     
     donationId = response.json().get("donationId")
     
-    response = requests.put(campaign_url + f"/increment/{input.campaignId}/{input.amount}")
+    response = requests.put(campaign_url + f"/increment/{input.campaignID}/{input.amount}")
     
     if response.status_code != 200:
         # Rollback the donation
