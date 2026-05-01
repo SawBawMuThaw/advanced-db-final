@@ -30,7 +30,8 @@ def get_mongo_client():
         
 @app.get("/campaign")
 def get_all_campaigns_endpoint(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], page : int | None = 1):
-    return get_all_campaigns(mongo_client, page)
+    campaings = get_all_campaigns(mongo_client, page)
+    return {'campaigns' : campaings}
 
 @app.get("/campaign/{id}")
 def get_campaign_by_id(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], id : str):
@@ -39,19 +40,20 @@ def get_campaign_by_id(mongo_client: Annotated[MongoClient, Depends(get_mongo_cl
     if campaign is None:
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     
-    return campaign
+    return {'campaign' : campaign}
 
 @app.post("/campaign")
 def create_new_campaign(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], input : CreateCampaignInput):
-    return create_campaign(mongo_client, input.title, input.description, input.videolink, input.ownerId, datetime.now(), input.goal)
+    campaignId = create_campaign(mongo_client, input.title, input.description, input.videolink, input.ownerId, datetime.now(), input.goal)
+    return {"campaignId" : campaignId}
 
 @app.get("/search")
 def search_campaigns_by_title(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], title : str):
-    return find_campaign_by_title(mongo_client, title)
+    return {"campaigns" : find_campaign_by_title(mongo_client, title)}
 
 @app.get("/search/owner")
 def search_campaigns_by_owner(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], ownerId : int):
-    return find_campaign_by_owner(mongo_client, ownerId)
+    return {"campaigns" : find_campaign_by_owner(mongo_client, ownerId)}
 
 @app.put("/campaign/{id}")
 def update_campaign_by_id(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], input : UpdateCampaignInput, id : str):

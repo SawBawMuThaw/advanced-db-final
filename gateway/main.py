@@ -5,14 +5,16 @@ gateway/main.py – API Gateway (PORT 3000)
 from __future__ import annotations
 import os
 import asyncio
-from typing import Any
+from typing import Any, Annotated
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import JSONResponse
+from fastapi import Body
 from dotenv import load_dotenv
 
 from .models.schemas import (
+    CampaignUpdate,
     LoginRequest,
     RegisterRequest,
     CampaignCreate,
@@ -167,8 +169,8 @@ async def get_campaign(id: str, request: Request):
 
 
 @app.put("/campaign/{id}")
-async def update_campaign(id: str, body: dict, request: Request):
-    return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/campaign/{id}", request, body)
+async def update_campaign(id: str, body: Annotated[CampaignUpdate, Body()], request: Request):
+    return await _proxy("PUT", f"{CAMPAIGN_COMMENT_URL}/campaign/{id}", request, body.dict())
 
 
 @app.put("/increment/{id}/{amount}")
@@ -184,9 +186,9 @@ async def comment(body: CommentCreate, request: Request):
     return await _proxy("POST", f"{SAGA_URL}/comment", request, body.dict())
 
 
-@app.post("/reply/{id}")
+@app.put("/reply/{id}")
 async def reply(id: str, body: CommentCreate, request: Request):
-    return await _proxy("POST", f"{SAGA_URL}/reply/{id}", request, body.dict())
+    return await _proxy("PUT", f"{SAGA_URL}/reply/{id}", request, body.dict())
 
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
-from models.user import UserResponse
-from repository.user_repo import UserRepository
+from ..models.user import UserResponse
+from ..repository.user_repo import UserRepository
 
 router = APIRouter(tags=["users"])
 _users = UserRepository()

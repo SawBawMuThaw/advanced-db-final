@@ -8,7 +8,7 @@ from ..models.user import User
 import requests
 from bson import json_util
 
-dotenv.load_dotenv()
+dotenv.load_dotenv('../.env')
 
 def create_campaign(mongo_client, title : str, description : str, videolink : str, ownerId : int, created : datetime, goal : float):
     db_name = os.getenv("DB_NAME")

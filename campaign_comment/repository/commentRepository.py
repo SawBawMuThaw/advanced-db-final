@@ -2,10 +2,13 @@ import os
 
 from bson import ObjectId
 from bson.errors import InvalidId
+import dotenv
 from ..models.comment import Comment
 from ..models.user import User
 import requests
+from bson import json_util
 
+dotenv.load_dotenv('../.env')
 
 def _get_username(userId: int) -> str:
     user_url = os.getenv("USER_SERVICE_URL", "")
@@ -55,12 +58,15 @@ def create_reply(mongo_client, commentId : str, userId: int, text : str, campaig
         raise Exception("Campaign not found")
     
     username = _get_username(userId)
+    
+    
     replyId = str(ObjectId())
     comment = Comment(_id=replyId, user=User(userId=userId, username=username), text=text, replies=[]).model_dump(by_alias=True, exclude_none=True)
     
     filter = {'_id' : ObjectId(campaignId)}
     update_operation = {'$push' : {'comments.$[c].replies' : comment}}
-    array_filters = [{'c._id' : _normalize_comment_id(commentId)}]
+    # we store comment Id as a string, not a ObjectId
+    array_filters = [{'c._id' : commentId}]
     result = campaigns.update_one(filter, update_operation, array_filters=array_filters)
     
     if result.modified_count == 0:
