@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Campaign - No Refunds</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="editCampaign">
+  <div id="site-nav"></div>
+  <div class="app-shell">
+    <main class="container section">
+      <div class="page-heading">
+        <p class="eyebrow">Edit</p>
+        <h1>Update campaign details.</h1>
+      </div>
+      <form id="campaignForm" class="form-card" style="width: min(760px, 100%);">
+        <h2 class="section-title">Campaign Details</h2>
+        <div id="campaignFormError" class="error hidden"></div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="title">Title</label>
+            <input id="title" name="title" required>
+          </div>
+          <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" required></textarea>
+          </div>
+          <div class="field">
+            <label for="videolink">Video Link</label>
+            <input id="videolink" name="videolink" type="url" required>
+          </div>
+          <button class="button button-action button-wide" type="submit">Save Changes</button>
+        </div>
+      </form>
+    </main>
+  </div>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

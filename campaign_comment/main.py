@@ -6,7 +6,7 @@ from typing import Annotated, List
 from fastapi.responses import FileResponse
 
 from .models.ReportInput import ReportInput
-from .repository.reportRepository import create_image, create_report, get_image
+from .repository.reportRepository import create_image, create_report, get_image, get_report
 
 from .models.CommentInput import CommentInput
 from .models.CreateCampaignInput import CreateCampaignInput
@@ -126,6 +126,15 @@ def post_report(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)],
         if str(e) == "Failed to add report":
             raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add report")
         
+@app.get('/report/{reportId}')
+def get_report_endpoint(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], reportId : str):
+    try:
+        return {"report" : get_report(mongo_client, reportId)}
+    except Exception as e:
+        if str(e) == "Report not found":
+            raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Report not found")
+        raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to get report")
+
 @app.post('/image/{reportId}/{campaignId}')
 def post_image(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], reportId : str, campaignId : str, images : List[UploadFile]):
     try:

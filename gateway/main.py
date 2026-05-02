@@ -6,10 +6,12 @@ from __future__ import annotations
 import os
 import asyncio
 from typing import Any, Annotated
+from urllib.parse import quote
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from fastapi import Body
 from dotenv import load_dotenv
 
@@ -41,6 +43,13 @@ if not all([DONATION_USER_URL, CAMPAIGN_COMMENT_URL, SAGA_URL]):
 # APP
 # ---------------------------------------------------------------------------
 app = FastAPI(title="API Gateway", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +221,17 @@ async def get_campaign(id: str, request: Request):
     return await _proxy("GET", f"{CAMPAIGN_COMMENT_URL}/campaign/{id}", request)
 
 
+@app.get("/search")
+async def search_campaigns(title: str, request: Request):
+    encoded_title = quote(title, safe="")
+    return await _proxy("GET", f"{CAMPAIGN_COMMENT_URL}/search?title={encoded_title}", request)
+
+
+@app.get("/search/owner")
+async def search_campaigns_by_owner(ownerId: int, request: Request):
+    return await _proxy("GET", f"{CAMPAIGN_COMMENT_URL}/search/owner?ownerId={ownerId}", request)
+
+
 @app.put("/campaign/{id}")
 async def update_campaign(
     id: str,
@@ -289,6 +309,35 @@ async def report(
 # ---------------------------------------------------------------------------
 # IMAGE UPLOAD — protected 
 # ---------------------------------------------------------------------------
+@app.get("/image/{name}")
+async def get_image(name: str, request: Request):
+    headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in ("host", "content-length")
+        and not k.lower().startswith("x-user-")
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            resp = await client.get(
+                f"{CAMPAIGN_COMMENT_URL}/image/{quote(name, safe='')}",
+                headers=headers,
+            )
+        except httpx.RequestError as exc:
+            raise HTTPException(status_code=502, detail=f"Upstream error: {exc}")
+
+    response_headers = {}
+    if "content-disposition" in resp.headers:
+        response_headers["content-disposition"] = resp.headers["content-disposition"]
+
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        media_type=resp.headers.get("content-type"),
+        headers=response_headers,
+    )
+
+
 @app.post("/image/{report_id}/{campaign_id}")
 async def upload_image(
     report_id: str,

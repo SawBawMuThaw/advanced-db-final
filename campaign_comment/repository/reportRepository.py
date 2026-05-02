@@ -36,6 +36,21 @@ def create_report(mongo_client: MongoClient, campaign_id : str, reportTitle : st
     else:
         raise ValueError("Failed to add report")
 
+def get_report(mongo_client: MongoClient, report_id : str):
+    db_name = os.getenv("DB_NAME")
+    db = mongo_client[db_name]
+    campaigns = db["campaigns"]
+
+    campaign = campaigns.find_one(
+        {"reports._id": report_id},
+        {"reports.$": 1}
+    )
+
+    if campaign is None or not campaign.get("reports"):
+        raise ValueError("Report not found")
+
+    return campaign["reports"][0]
+
 def create_image(mongo_client: MongoClient, reportId : str, campaignId : str, images : List[UploadFile]):
     db_name = os.getenv("DB_NAME")
     image_folder_path = os.getenv("IMAGE_FOLDER_PATH")

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - No Refunds</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="login">
+  <div id="site-nav"></div>
+  <div class="app-shell">
+    <main class="split-page">
+      <section class="auth-art">
+        <p class="eyebrow" style="color: #b9ffd0;">No Refunds</p>
+        <h1>Welcome back to transparent giving.</h1>
+        <p>Sign in to donate, create campaigns, post reports, and participate in campaign conversations.</p>
+      </section>
+      <section class="auth-panel">
+        <form id="loginForm" class="form-card">
+          <h1>Login</h1>
+          <p class="muted">Use your No Refunds account.</p>
+          <div id="loginSuccess" class="success hidden">Registration complete. You can log in now.</div>
+          <div id="loginError" class="error hidden"></div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="username">Username</label>
+              <input id="username" name="username" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <button class="button button-action button-wide" type="submit">Login</button>
+            <a class="button button-secondary button-wide" href="register.html">Create Account</a>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -46,8 +46,12 @@ def record_donation(input: DonationInput):
     if response.status_code != 200:
         # Rollback the donation
         requests.delete(donation_url + f"/donate/{donationId}")
-        
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to record donation")
+
+        try:
+            detail = response.json().get("detail", "Failed to record donation")
+        except Exception:
+            detail = "Failed to record donation"
+        raise HTTPException(status_code=response.status_code, detail=detail)
     
 @app.post("/campaign")
 def create_campaign(input : CampaignInput):
@@ -130,7 +134,11 @@ def create_user(input: UserInput):
     response = requests.post(user_url + "/register", json=payload)
     
     if response.status_code != 200:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create user")
+        try:
+            detail = response.json().get("detail", "Failed to create user")
+        except Exception:
+            detail = "Failed to create user"
+        raise HTTPException(status_code=response.status_code, detail=detail)
     
     user_id = response.json().get('userId')
     return {'userId' : user_id}
@@ -171,10 +179,21 @@ def upload_image(reportId : str, campaignId : str, images : List[UploadFile]):
     if response.status_code == 404:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     
-    response = requests.post(campaign_url + f"/image/{reportId}/{campaignId}", files={"images": images})
+    upload_files = []
+    for image in images:
+        image.file.seek(0)
+        upload_files.append(
+            ("images", (image.filename, image.file, image.content_type))
+        )
+
+    response = requests.post(campaign_url + f"/image/{reportId}/{campaignId}", files=upload_files)
     
     if response.status_code != 200:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload images")
+        try:
+            detail = response.json().get("detail", "Failed to upload images")
+        except Exception:
+            detail = "Failed to upload images"
+        raise HTTPException(status_code=response.status_code, detail=detail)
     
     image_names = response.json().get('imageNames')
     return {'imageNames' : image_names}
