@@ -1,0 +1,10 @@
+INSERT INTO dbo.Users (username, password, email, role) VALUES ('admin', '$2b$12$$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'admin@example.com', 'admin');
+INSERT INTO dbo.Users (username, password, email, role) VALUES ('user1', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user1@example.com', 'user');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user2', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user2@example.com');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user3', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user3@example.com');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user4', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user4@example.com');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user5', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user5@example.com');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user6', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user6@example.com');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user7', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user7@example.com');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user8', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user8@example.com');
+INSERT INTO dbo.Users (username, password, email) VALUES ('user9', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user9@example.com');

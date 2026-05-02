@@ -13,7 +13,7 @@ from .models.CreateCampaignInput import CreateCampaignInput
 from .models.UpdateCampaignInput import UpdateCampaignInput
 from .repository.campaignRepository import find_campaign_by_owner, find_campaign_by_title, increment_campaign_current, decrement_campaign_current, like_campaign
 from .repository.campaignRepository import create_campaign, get_campaign, get_all_campaigns, update_campaign
-from .repository.commentRepository import create_comment, create_reply
+from .repository.commentRepository import create_comment, create_reply, get_most_active_commenters
 from pymongo import MongoClient
 import dotenv
 import os
@@ -168,3 +168,8 @@ def like_campaign_endpoint(mongo_client: Annotated[MongoClient, Depends(get_mong
             raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="User has already liked this campaign")
         if str(e) == "User not found":
             raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="User not found")
+
+@app.get('/active-commenters')
+def get_active_commenters(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], top_n : int | None = 10):
+    active_commenters = get_most_active_commenters(mongo_client, top_n)
+    return {"activeCommenters" : active_commenters}

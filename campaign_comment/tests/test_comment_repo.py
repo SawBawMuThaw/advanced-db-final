@@ -6,7 +6,7 @@ from datetime import datetime
 from testcontainers.mongodb import MongoDbContainer
 from pymongo import MongoClient
 
-from ..repository.commentRepository import create_comment, create_reply
+from ..repository.commentRepository import create_comment, create_reply, get_most_active_commenters
 from ..repository.campaignRepository import get_campaign
 
 campaign_id = "6622f0b7a12c4d91f9b00123"
@@ -137,3 +137,16 @@ def test_reply(mock_db, mock_mongo_client, monkeypatch):
     assert len(root_comment['replies']) == 2
     assert root_comment['replies'][1]['text'] == text
     assert root_comment['replies'][1]['_id'] == replyId
+
+def test_get_most_active_commenters(mock_db, mock_mongo_client, monkeypatch):
+    monkeypatch.setenv("DB_NAME", "charitydb")
+    monkeypatch.setenv("USER_SERVICE_URL", "http://mock-user-service")
+
+    active_commenters = get_most_active_commenters(mock_mongo_client, top_n=5)
+
+    assert isinstance(active_commenters, list)
+    assert len(active_commenters) == 2
+    assert active_commenters[0]['userId'] == 5
+    assert active_commenters[0]['username'] == 'testuser'
+    assert active_commenters[0]['totalComments'] == 1
+    assert active_commenters[0]['campaignCount'] == 1
