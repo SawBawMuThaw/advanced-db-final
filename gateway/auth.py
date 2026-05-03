@@ -68,6 +68,24 @@ def require_auth(
 
     return payload
 
+def require_admin(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)]
+) -> dict[str, Any]:
+    """
+    Same as require_auth but also enforces role == 'admin'.
+    """
+    payload = require_auth(credentials)  
+
+    if payload.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    return payload
+
 
 # Convenience alias for type hints
 TokenPayload = Annotated[dict[str, Any], Depends(require_auth)]
+
+AdminPayload = Annotated[dict[str, Any], Depends(require_admin)]
