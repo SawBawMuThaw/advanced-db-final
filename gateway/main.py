@@ -266,7 +266,14 @@ async def reply(
         payload,
         extra_headers=_user_headers(token),
     )
-
+    
+@app.put("/active-commenters")
+async def get_active_commenters(request: Request, top_n : int | None = 10):
+    return await _proxy(
+        "GET",
+        f"{CAMPAIGN_COMMENT_URL}/active-commenters?top_n={top_n}",
+        request
+    )
 
 # ---------------------------------------------------------------------------
 # REPORT — protected
