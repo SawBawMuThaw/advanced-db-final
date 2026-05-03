@@ -175,6 +175,9 @@ async def donate(
 
     return response
 
+@app.get("/donate/{campaign_id}/running-total")
+async def get_running_total(campaign_id: str, request: Request):
+    return await _proxy("GET", f"{DONATION_USER_URL}/donate/{campaign_id}/running-total", request)
 
 @app.get("/donate/{campaign_id}")
 async def get_donations(campaign_id: str, request: Request):
