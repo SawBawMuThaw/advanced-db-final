@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi import Body
 from dotenv import load_dotenv
 
-from .auth import TokenPayload                         
+from .auth import TokenPayload,AdminPayload                   
 from .models.schemas import (
     CampaignUpdate,
     LoginRequest,
@@ -22,6 +22,7 @@ from .models.schemas import (
     DonationCreate,
     CommentCreate,
     ReportCreate,
+    StopCampaign
 )
 
 # ---------------------------------------------------------------------------
@@ -131,7 +132,35 @@ async def campaign_ws(ws: WebSocket, campaign_id: str):
 # ---------------------------------------------------------------------------
 @app.post("/login")
 async def login(body: LoginRequest, request: Request):
-    return await _proxy("POST", f"{DONATION_USER_URL}/login", request, body.dict())
+    # Proxy to donation_user service to authenticate
+    response = await _proxy("POST", f"{DONATION_USER_URL}/login", request, body.dict())
+
+    # If user requested a specific role, verify it matches the JWT
+    if body.role and response.status_code == 200:
+        import json
+        data = json.loads(response.body)
+        token = data.get("access_token")
+
+        if token:
+            try:
+                from .auth import PUBLIC_KEY, _ALGORITHM
+                from jose import jwt as jose_jwt
+                payload = jose_jwt.decode(token, PUBLIC_KEY, algorithms=[_ALGORITHM])
+
+                if payload.get("role") != body.role:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"User is not an {body.role}",
+                    )
+            except HTTPException:
+                raise
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Could not verify role: {exc}",
+                )
+
+    return response
 
 
 @app.post("/register")
@@ -191,10 +220,10 @@ async def get_donations(campaign_id: str, request: Request):
 async def create_campaign(
     body: CampaignCreate,
     request: Request,
-    token: TokenPayload,                           # ← protected
+    token: TokenPayload,                           
 ):
     payload = body.dict()
-    payload["ownerId"] = int(token["sub"])         # set from token
+    payload["ownerId"] = int(token["sub"])         
 
     return await _proxy(
         "POST",
@@ -230,6 +259,23 @@ async def update_campaign(
         extra_headers=_user_headers(token),
     )
 
+@app.put("/campaign/{id}/stop")
+async def stop_campaign(
+    id: str,
+    request: Request,
+    token: AdminPayload,                             
+):
+    """
+    Admin-only. Sets isOpen = False on the campaign.
+    Internally reuses update_campaign with close=True.
+    """
+    return await _proxy(
+        "PUT",
+        f"{CAMPAIGN_COMMENT_URL}/campaign/{id}",
+        request,
+        {"close": True},                             
+        extra_headers=_user_headers(token),
+    )
 
 # ---------------------------------------------------------------------------
 # COMMENTS — protected
