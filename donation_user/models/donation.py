@@ -23,3 +23,14 @@ class DonorDetail(BaseModel):
 class CampaignDonationsResponse(BaseModel):
     campaignID: str
     donors: list[DonorDetail]
+    
+class RunningTotalEntry(BaseModel):
+    donationId: int
+    username: str
+    amount: float
+    time: datetime
+    runningTotal: float
+
+class RunningTotalResponse(BaseModel):
+    campaignID: str
+    entries: list[RunningTotalEntry]
