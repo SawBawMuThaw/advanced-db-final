@@ -151,8 +151,9 @@ def post_image(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], 
             raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add image")
         if str(e) == "Invalid image format. Only JPEG and PNG are allowed.":
             raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="Invalid image format. Only JPEG and PNG are allowed.")
-        
-        
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
 @app.get('/image/{name}')
 def get_image_endpoint(name:str):
     try:

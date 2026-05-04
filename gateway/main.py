@@ -407,9 +407,13 @@ async def upload_image(
     token: TokenPayload,
 ):
 
+    # Forward multipart body but drop Content-Length / Transfer-Encoding so httpx
+    # recomputes them for `content=body_bytes`. Keeping the client's Content-Length
+    # often mismatches and breaks multipart parsing upstream (500 errors).
     headers = {
         k: v for k, v in request.headers.items()
-        if k.lower() not in ("host",)
+        if k.lower()
+        not in ("host", "content-length", "transfer-encoding", "connection")
         and not k.lower().startswith("x-user-")
     }
     headers.update(_user_headers(token))

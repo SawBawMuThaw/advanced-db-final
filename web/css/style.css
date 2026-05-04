@@ -417,6 +417,30 @@ img {
   padding: 40px 0 20px;
 }
 
+.page-back-row {
+  padding: 28px 0 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.back-link:hover {
+  color: var(--primary);
+}
+
+.back-link .material-symbols-outlined {
+  font-size: 20px;
+  line-height: 1;
+}
+
 .split-page {
   display: grid;
   min-height: calc(100vh - 72px);

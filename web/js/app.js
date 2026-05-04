@@ -53,6 +53,24 @@
     });
   }
 
+  function backLinkRow(href, label) {
+    const safeHref = String(href == null ? "" : href).replace(/"/g, "&quot;");
+    return `
+      <div class="page-back-row">
+        <a class="back-link" href="${safeHref}">
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+          ${escapeHtml(label)}
+        </a>
+      </div>
+    `;
+  }
+
+  function insertBackRow(mainSelector, href, label) {
+    const main = document.querySelector(mainSelector);
+    if (!main || main.querySelector(".page-back-row")) return;
+    main.insertAdjacentHTML("afterbegin", backLinkRow(href, label));
+  }
+
   function progressPercent(current, goal) {
     const currentAmount = Number(current || 0);
     const goalAmount = Number(goal || 0);
@@ -560,7 +578,7 @@
     const reports = campaign.reports || [];
     if (!reports.length) return `<div class="empty-state">No updates have been posted yet.</div>`;
     return reports.map(function (report) {
-      const images = report.attachedImages || [];
+      const images = report.attachedImages || report.attached_images || [];
       return `
         <article class="report-item">
           <div class="report-head">
@@ -655,6 +673,7 @@
     const alreadyLiked = payload ? likedBy.includes(Number(payload.sub)) : false;
 
     return `
+      ${backLinkRow("index.html", "Back to campaigns")}
       <div class="detail-layout">
         <div class="detail-main">
           <section class="detail-media">
@@ -913,6 +932,7 @@
     try {
       const data = await Api.getCampaign(id);
       campaign = data.campaign;
+      insertBackRow("main.container.section", `campaign.html?id=${encodeURIComponent(id)}`, "Back to campaign");
       campaignTitleEl.textContent = campaignTitle(campaign);
       summary.innerHTML = progressMarkup(campaign.current, campaign.goal, false);
       if (status === "success") {
@@ -976,7 +996,12 @@
     const donor = receipt.donor || {};
     const campaignName = campaign ? campaignTitle(campaign) : "Campaign contribution";
     const receiptNumber = `NR-${String(receipt.receiptId || receipt.donationId).padStart(6, "0")}`;
+    const backHref = campaign && Api.getCampaignId(campaign)
+      ? `campaign.html?id=${encodeURIComponent(Api.getCampaignId(campaign))}`
+      : "index.html";
+    const backLabel = campaign ? "Back to campaign" : "Back to home";
     return `
+      ${backLinkRow(backHref, backLabel)}
       <article class="tax-receipt" id="printableReceipt">
         <header class="receipt-header">
           <div>
@@ -1111,6 +1136,7 @@
         form.classList.add("hidden");
         return;
       }
+      insertBackRow("main.container.section", `campaign.html?id=${encodeURIComponent(id)}`, "Back to campaign");
       form.elements.title.value = campaignTitle(campaign);
       form.elements.description.value = getInfo(campaign).description || "";
       form.elements.videolink.value = getInfo(campaign).videolink || "";
@@ -1234,6 +1260,7 @@
         form.classList.add("hidden");
         return;
       }
+      insertBackRow("main.container.section", `campaign.html?id=${encodeURIComponent(id)}`, "Back to campaign");
       title.textContent = campaignTitle(campaign);
       summary.innerHTML = `
         <p class="muted">Available balance</p>
