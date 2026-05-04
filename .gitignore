@@ -1,0 +1,46 @@
+# Local / secrets
+*.env
+.env.*
+!.env.example
+private_key.pem
+public_key.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+
+# Virtual env & local run artifacts
+.venv/
+venv/
+ENV/
+.logs/
+*.log
+
+# Project-specific (not needed in repo)
+SKILL.md
+Final Project Implementation.pdf
+MongoEnv
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - No Refunds</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="register">
+  <div id="site-nav"></div>
+  <div class="app-shell">
+    <main class="split-page">
+      <section class="auth-art">
+        <p class="eyebrow" style="color: #b9ffd0;">Join No Refunds</p>
+        <h1>Start supporting campaigns with a public trail of impact.</h1>
+        <p>Your account unlocks donations, comments, likes, campaign creation, and owner reports.</p>
+      </section>
+      <section class="auth-panel">
+        <form id="registerForm" class="form-card">
+          <h1>Create Account</h1>
+          <p class="muted">Register as a donor or campaign owner.</p>
+          <div id="registerError" class="error hidden"></div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="username">Username</label>
+              <input id="username" name="username" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="new-password" required>
+            </div>
+            <div class="field">
+              <label for="confirmPassword">Confirm Password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required>
+            </div>
+            <button class="button button-action button-wide" type="submit">Register</button>
+            <a class="button button-secondary button-wide" href="login.html">Back to Login</a>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

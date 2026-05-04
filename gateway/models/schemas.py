@@ -25,7 +25,7 @@ class CampaignCreate(BaseModel):
     description: str
     goal: float
     videolink: str
-    ownerId: int   # later remove (JWT)
+    ownerId: Optional[int] = None
 
 
 class CampaignUpdate(BaseModel):
@@ -39,7 +39,7 @@ class CampaignUpdate(BaseModel):
 # DONATION
 # -----------------------------
 class DonationCreate(BaseModel):
-    userID: int
+    userID: Optional[int] = None
     campaignID: str
     amount: float
     time: str
@@ -50,7 +50,7 @@ class DonationCreate(BaseModel):
 # -----------------------------
 class CommentCreate(BaseModel):
     campaignId: str
-    userId: int
+    userId: Optional[int] = None
     text: str
 
 

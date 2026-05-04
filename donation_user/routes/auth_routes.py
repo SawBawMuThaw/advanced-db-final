@@ -26,17 +26,25 @@ def login(body: LoginRequest):
 @router.post("/register", response_model=RegisterResponse, status_code=200)
 def register(body: RegisterRequest):
     """Create a new user account."""
-    if _users.username_exists(body.username):
+    try:
+        if _users.username_exists(body.username):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username already taken",
+            )
+        if _users.email_exists(body.email):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+        hashed = hash_password(body.password)
+        user_id = _users.create_user(body.username, hashed, body.email)
+    except HTTPException:
+        raise
+    except Exception as exc:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username already taken",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {exc}",
         )
-    if _users.email_exists(body.email):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
-    hashed = hash_password(body.password)
-    user_id = _users.create_user(body.username, hashed, body.email)
     # Client-side redirect to login.html is handled by the caller (gateway / front-end)
     return RegisterResponse(userId=user_id)
