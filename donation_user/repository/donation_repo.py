@@ -44,11 +44,23 @@ class DonationRepository:
                 # Step 2: get ID
                 cursor.execute(sql_get_id)
                 row = cursor.fetchone()
+                donation_id = int(row[0]) 
+                
+                #Check whether Trigger generaed and receipt was created
+                cursor.execute(
+                    "SELECT receiptID, tax FROM dbo.Receipts WHERE donationID = ?", donation_id
+                )
+                receipt_row = cursor.fetchone()
     
                 if not row:
                     raise Exception("Failed to retrieve donationID")
     
-                return int(row[0])
+                return {
+                    "donationId": donation_id,
+                    "receiptGenerated": receipt_row is not None,
+                    "receiptId": receipt_row.receiptID if receipt_row else None,
+                    "tax": receipt_row.tax if receipt_row else None,
+                }
     
             except Exception as e:
                 print("SQL ERROR:", repr(e))
@@ -111,3 +123,61 @@ class DonationRepository:
                 "amount": row.amount,
                 "time": row.time,
             }
+            
+            
+    def get_receipt_by_donation(self, donation_id: int) -> Optional[dict]:
+        sql = """
+            SELECT receiptID, taxPercent, tax, donationID
+            FROM dbo.Receipts
+            WHERE donationID = ?
+        """
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, donation_id)
+            row = cursor.fetchone()
+    
+            if row is None:
+                return None
+    
+            return {
+                "receiptId": row.receiptID,
+                "taxPercent": row.taxPercent,
+                "tax": row.tax,
+                "donationId": row.donationID,
+            }
+            
+            
+    def get_running_total(self, campaign_id: str) -> list[dict]:
+        sql = """
+            SELECT
+                d.campaignID,
+                d.donationID,
+                u.username,
+                d.amount,
+                d.time,
+                SUM(d.amount) OVER (
+                    PARTITION BY d.campaignID
+                    ORDER BY d.time
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                ) AS runningTotal
+            FROM dbo.Donations d
+            JOIN dbo.Users u ON u.userID = d.userID
+            WHERE d.campaignID = ?
+            ORDER BY d.time ASC;
+        """
+    
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, campaign_id)
+            rows = cursor.fetchall()
+    
+            return [
+                {
+                    "donationId": row.donationID,
+                    "username": row.username,
+                    "amount": float(row.amount),
+                    "time": row.time,
+                    "runningTotal": float(row.runningTotal),
+                }
+                for row in rows
+            ]

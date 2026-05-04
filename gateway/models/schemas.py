@@ -8,6 +8,7 @@ from typing import Optional
 class LoginRequest(BaseModel):
     username: str
     password: str
+    role: Optional[str] = None
 
 
 class RegisterRequest(BaseModel):
@@ -60,3 +61,6 @@ class ReportCreate(BaseModel):
     campaignId: str
     reportTitle: str
     amount: float
+    
+class StopCampaign(BaseModel):
+    close: bool = True
