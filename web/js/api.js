@@ -116,6 +116,15 @@
     getDonations: function (campaignId) {
       return request(`/donate/${encodeURIComponent(campaignId)}`);
     },
+    getDonationRunningTotal: function (campaignId) {
+      return request(`/donate/${encodeURIComponent(campaignId)}/running-total`);
+    },
+    getDonationReceipt: function (donationId) {
+      return request(`/donate/${encodeURIComponent(donationId)}/receipt`);
+    },
+    getActiveCommenters: function (topN) {
+      return request(`/active-commenters?top_n=${encodeURIComponent(topN || 10)}`);
+    },
     postComment: function (payload) {
       return request("/comment", { method: "POST", auth: true, body: payload });
     },

@@ -18,7 +18,8 @@
         <p class="eyebrow">Donation</p>
         <h1 id="donationCampaignTitle">Campaign</h1>
       </div>
-      <div class="checkout-layout">
+      <div id="donationResult" class="hidden"></div>
+      <div id="checkoutLayout" class="checkout-layout">
         <form id="donateForm" class="form-card" style="width: 100%;">
           <h2 class="section-title">Payment</h2>
           <div id="donateError" class="error hidden"></div>
@@ -35,6 +36,12 @@
               <label for="donationAmount">Amount</label>
               <input id="donationAmount" name="amount" type="number" min="0.01" step="0.01" required>
             </div>
+            <div class="amount-presets" aria-label="Quick donation amounts">
+              <button class="amount-chip" type="button" data-amount="10">$10</button>
+              <button class="amount-chip" type="button" data-amount="25">$25</button>
+              <button class="amount-chip" type="button" data-amount="50">$50</button>
+              <button class="amount-chip" type="button" data-amount="100">$100</button>
+            </div>
             <div class="checkout-total">
               <span class="muted">Total</span>
               <strong id="donationTotal" class="stat-value">$0.00</strong>
@@ -49,6 +56,16 @@
           <h2 class="section-title">Campaign Progress</h2>
           <div id="donationSummary" style="margin-top: 18px;">
             <span class="loader">Loading campaign</span>
+          </div>
+          <div class="trust-list">
+            <div>
+              <span class="material-symbols-outlined" aria-hidden="true">verified_user</span>
+              <p>Authenticated donations are recorded through the gateway and saga flow.</p>
+            </div>
+            <div>
+              <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+              <p>Donations over $50 can generate receipt data automatically.</p>
+            </div>
           </div>
         </aside>
       </div>

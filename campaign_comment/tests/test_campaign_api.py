@@ -188,9 +188,14 @@ def test_increment_campaign_current(mock_db, monkeypatch, mock_mongo_client):
     app.dependency_overrides[get_mongo_client] = lambda: mock_mongo_client
     
     campaign_id = str(uuids[2])
+    amount = 100
+    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    mock_db.campaigns.update_one(
+        {'_id' : ObjectId(campaign_id)},
+        {'$set': {'isOpen': True, 'current': min(doc['current'], doc['goal'] - amount - 1)}}
+    )
     doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
     prev_current = doc['current']
-    amount = 100
     
     result = test_client.put(f"/increment/{campaign_id}/{amount}")
     
@@ -206,6 +211,11 @@ def test_increment_campaign_current(mock_db, monkeypatch, mock_mongo_client):
     
     assert result.status_code == 400
     assert result.json() == {"detail": "Amount exceeds campaign goal"}
+
+    mock_db.campaigns.update_one({'_id' : ObjectId(campaign_id)}, {'$set': {'isOpen': False}})
+    result = test_client.put(f"/increment/{campaign_id}/1")
+    assert result.status_code == 400
+    assert result.json() == {"detail": "Campaign is closed"}
     
     bogus_campaign_id = str(ObjectId())
     result = test_client.put(f"/increment/{bogus_campaign_id}/{amount}")
@@ -218,9 +228,12 @@ def test_decrement_campaign_current(mock_db, monkeypatch, mock_mongo_client):
     app.dependency_overrides[get_mongo_client] = lambda: mock_mongo_client
     
     campaign_id = str(uuids[3])
-    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
-    prev_current = doc['current']
     amount = 100
+    doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    if doc['current'] < amount:
+        mock_db.campaigns.update_one({'_id' : ObjectId(campaign_id)}, {'$set': {'current': amount + 1}})
+        doc = mock_db.campaigns.find_one({'_id' : ObjectId(campaign_id)})
+    prev_current = doc['current']
     
     result = test_client.put(f"/decrement/{campaign_id}/{amount}")
     

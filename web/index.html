@@ -14,54 +14,36 @@
   <div id="site-nav"></div>
   <div class="app-shell">
     <main>
-      <section class="container hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Transparent charity crowdfunding</p>
-          <h1>Fund campaigns with visible progress and public updates.</h1>
-          <p>Explore open campaigns, support the work you trust, and follow owner reports after funds are used.</p>
-          <form id="homeSearch" class="form-grid" style="max-width: 620px; margin-top: 24px;">
-            <div class="field">
-              <label for="homeSearchInput">Search campaigns</label>
-              <input id="homeSearchInput" name="q" placeholder="Clean water, education, disaster relief">
-            </div>
-            <button class="button button-action" type="submit">
-              <span class="material-symbols-outlined" aria-hidden="true">search</span>
-              Search
+      <section class="home-hero" id="about">
+        <div class="container home-hero-inner">
+          <h1>Radical transparency. Immediate impact.</h1>
+          <p>100% of your donation goes directly to the cause. Track exactly where every dollar is spent in real-time. Give with absolute certainty.</p>
+          <form id="homeSearch" class="hero-search">
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            <label class="sr-only" for="homeSearchInput">Search campaigns</label>
+            <input id="homeSearchInput" name="q" placeholder="Find a cause to support..." autocomplete="off">
+            <button class="hero-search-button" type="submit" aria-label="Search campaigns">
+              <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
             </button>
           </form>
-        </div>
-        <div class="hero-panel">
-          <div class="impact-preview">
-            <div class="impact-media">
-              <span class="material-symbols-outlined" aria-hidden="true">diversity_1</span>
-            </div>
-            <div class="impact-stats">
-              <div class="impact-stat">
-                <strong>Live</strong>
-                <span>progress</span>
-              </div>
-              <div class="impact-stat">
-                <strong>Public</strong>
-                <span>updates</span>
-              </div>
-              <div class="impact-stat">
-                <strong>Secure</strong>
-                <span>giving</span>
-              </div>
-            </div>
+          <div class="category-pills" id="categoryPills" aria-label="Campaign categories">
+            <button class="category-pill active" type="button" data-category="">All Causes</button>
+            <button class="category-pill" type="button" data-category="Medical">Medical</button>
+            <button class="category-pill" type="button" data-category="Education">Education</button>
+            <button class="category-pill" type="button" data-category="Environment">Environment</button>
+            <button class="category-pill" type="button" data-category="Crisis Relief">Crisis Relief</button>
+            <button class="category-pill" type="button" data-category="Animals">Animals</button>
           </div>
         </div>
       </section>
-      <section class="container section">
+      <section class="container section" id="campaigns">
         <div class="section-title-row">
-          <div>
-            <p class="eyebrow">Browse</p>
-            <h2 class="section-title">Campaigns</h2>
-          </div>
-          <span id="pageLabel" class="badge badge-open">Page 1</span>
+          <h2 class="section-title">Urgent Campaigns</h2>
+          <a class="view-link" href="index.html">View all <span aria-hidden="true">-></span></a>
         </div>
         <div id="homeError" class="error hidden"></div>
         <div id="campaignGrid" class="campaign-grid" style="margin-top: 20px;"></div>
+        <div id="pageLabel" class="pager-label">Page 1</div>
         <div class="pager">
           <button id="prevPage" class="button button-secondary" type="button">
             <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
@@ -73,7 +55,29 @@
           </button>
         </div>
       </section>
+      <section class="home-band" id="how-it-works">
+        <div class="container home-band-inner">
+          <div>
+            <h2>How it Works</h2>
+            <p>Campaign owners publish goals, donors fund through the gateway, and every report stays visible on the campaign page.</p>
+          </div>
+          <a class="button button-primary" href="create-campaign.html">Start a Campaign</a>
+        </div>
+      </section>
     </main>
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <strong>No Refunds</strong>
+        <div>
+          <a href="#">Terms</a>
+          <a href="#">Privacy</a>
+          <a href="#">Cookie Policy</a>
+          <a href="#">Contact</a>
+          <a href="#">Careers</a>
+        </div>
+        <span>© 2026 No Refunds. Radical transparency in giving.</span>
+      </div>
+    </footer>
   </div>
   <script src="js/auth.js"></script>
   <script src="js/api.js"></script>

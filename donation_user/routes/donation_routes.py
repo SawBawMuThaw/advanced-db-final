@@ -42,7 +42,7 @@ def create_donation(body: DonationCreate):
     Called by the Saga Orchestrator after campaign counter is incremented.
     """
     try:
-        donation_id = _donations.create_donation(
+        result = _donations.create_donation(
             user_id=body.userID,
             campaign_id=body.campaignID,   
             amount=body.amount,
@@ -53,15 +53,14 @@ def create_donation(body: DonationCreate):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Could not record donation: {exc}",
         )
-        
-    result = _donations.create_donation(
-    user_id=body.userID,
-    campaign_id=body.campaignID,
-    amount=body.amount,
-    time=body.time,
-)
-    
-    return DonationResponse(donationId=result["donationId"])
+    if not isinstance(result, dict):
+        result = {"donationId": result}
+    return DonationResponse(
+        donationId=result["donationId"],
+        receiptGenerated=bool(result.get("receiptGenerated", False)),
+        receiptId=result.get("receiptId"),
+        tax=result.get("tax"),
+    )
 
 
 # NOTE: This DELETE must be defined BEFORE GET /donate/{campaign_id}

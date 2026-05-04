@@ -69,6 +69,8 @@ def increment_campaign(mongo_client: Annotated[MongoClient, Depends(get_mongo_cl
     except Exception as e:
         if str(e) == "Campaign not found":
             raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+        elif str(e) == "Campaign is closed":
+            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="Campaign is closed")
         elif str(e) == "Amount exceeds campaign goal":
             raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="Amount exceeds campaign goal")
         

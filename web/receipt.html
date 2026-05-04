@@ -3,27 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Profile - No Refunds</title>
+  <title>Tax Receipt - No Refunds</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-page="profile">
+<body data-page="receipt">
   <div id="site-nav"></div>
-  <div class="app-shell">
+  <div class="app-shell receipt-shell">
     <main class="container section">
-      <div id="profileError" class="error hidden"></div>
-      <section id="profileHeader" class="surface-panel profile-header">
-        <span class="loader">Loading profile</span>
-      </section>
-      <section class="section-tight">
-        <div class="section-title-row">
-          <h2 class="section-title">Campaigns</h2>
-        </div>
-        <div id="profileCampaigns" class="campaign-grid"></div>
-      </section>
+      <div id="receiptError" class="error hidden"></div>
+      <div id="receiptContent">
+        <span class="loader">Loading receipt</span>
+      </div>
     </main>
   </div>
   <script src="js/auth.js"></script>

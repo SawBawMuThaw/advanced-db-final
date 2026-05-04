@@ -15,7 +15,7 @@ class DonationRepository:
         campaign_id: str,
         amount: Decimal,
         time: datetime,
-    ) -> int:
+    ) -> dict:
     
         if time.tzinfo is not None:
             time = time.replace(tzinfo=None)
@@ -127,9 +127,21 @@ class DonationRepository:
             
     def get_receipt_by_donation(self, donation_id: int) -> Optional[dict]:
         sql = """
-            SELECT receiptID, taxPercent, tax, donationID
-            FROM dbo.Receipts
-            WHERE donationID = ?
+            SELECT
+                r.receiptID,
+                r.taxPercent,
+                r.tax,
+                r.donationID,
+                d.campaignID,
+                d.amount,
+                d.time,
+                u.userID,
+                u.username,
+                u.email
+            FROM dbo.Receipts r
+            JOIN dbo.Donations d ON d.donationID = r.donationID
+            JOIN dbo.Users u ON u.userID = d.userID
+            WHERE r.donationID = ?
         """
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -144,6 +156,14 @@ class DonationRepository:
                 "taxPercent": row.taxPercent,
                 "tax": row.tax,
                 "donationId": row.donationID,
+                "campaignID": row.campaignID,
+                "amount": row.amount,
+                "time": row.time,
+                "donor": {
+                    "userId": row.userID,
+                    "username": row.username,
+                    "email": row.email,
+                },
             }
             
             

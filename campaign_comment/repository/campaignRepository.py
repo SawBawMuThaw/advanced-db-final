@@ -1,6 +1,7 @@
 from datetime import datetime
 from unittest import result
 from bson import ObjectId
+import re
 import dotenv
 import os
 from ..models.campaign import Campaign, Info
@@ -137,6 +138,9 @@ def increment_campaign_current(mongo_client, campaign_id : str, amount : float):
     
     if doc is None:
         raise Exception("Campaign not found")
+
+    if doc.get('isOpen') is False:
+        raise Exception("Campaign is closed")
     
     if(doc['current'] + amount > doc['goal']):
         raise Exception("Amount exceeds campaign goal")
@@ -172,7 +176,13 @@ def find_campaign_by_title(mongo_client, title : str):
     db = mongo_client[db_name]
     collection = db['campaigns']
     
-    results = collection.find({"info.title" : title})
+    pattern = re.escape(title.strip())
+    results = collection.find({
+        "$or": [
+            {"info.title": {"$regex": pattern, "$options": "i"}},
+            {"info.description": {"$regex": pattern, "$options": "i"}},
+        ]
+    })
     
     campaigns = []
     for doc in results:
