@@ -61,15 +61,23 @@ def create_image(mongo_client: MongoClient, reportId : str, campaignId : str, im
         raise ValueError("Invalid image format. Only JPEG and PNG are allowed.")
     
     image_names = []
-    
+
     for img in images:
-        image = img.file.read()
-        hash = hashlib.sha256(img.filename.encode("utf-8")).hexdigest()
+        if hasattr(img, "file") and img.file is not None:
+            try:
+                img.file.seek(0)
+            except Exception:
+                pass
+        raw = img.file.read() if img.file is not None else b""
+        label = (img.filename or "image").encode("utf-8", errors="replace")
+        hash = hashlib.sha256(label).hexdigest()
+        if not img.content_type or "/" not in img.content_type:
+            raise ValueError("Invalid image format. Only JPEG and PNG are allowed.")
         format = img.content_type.split("/")[1]
         image_name = f"{hash}.{format}"
         image_path = os.path.join(image_folder_path, image_name)
         with open(image_path, "wb") as f:
-            f.write(image)
+            f.write(raw)
             image_names.append(image_name)
     
     campaign = campaigns.find_one({"_id" : ObjectId(campaignId)})

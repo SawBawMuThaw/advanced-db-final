@@ -9,4 +9,4 @@ INSERT INTO dbo.Users (username, password, email) VALUES ('user7', '$2b$12$9RMGb
 INSERT INTO dbo.Users (username, password, email) VALUES ('user8', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user8@example.com');
 INSERT INTO dbo.Users (username, password, email) VALUES ('user9', '$2b$12$9RMGbmEbAIR7vTMFhhZu6uAiVl62JhPTR47cM7/lH56PXL/zaQufa', 'user9@example.com');
 
-INSERT INTO dbo.Users (username, password, email, role) VALUES ('HarryAdmin', '$2a$12$FJJcNeZKShQwoTuKGGsJ5.9/wmM.94DKBHZ.GrM5VtJWyyWOkF5P6', 'admin@example.com', 'admin');
+INSERT INTO dbo.Users (username, password, email, role) VALUES ('HarryAdmin', '$2a$12$FJJcNeZKShQwoTuKGGsJ5.9/wmM.94DKBHZ.GrM5VtJWyyWOkF5P6', 'harry@example.com', 'admin');

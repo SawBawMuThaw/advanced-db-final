@@ -1,7 +1,6 @@
 """Tests for POST /donate, DELETE /donate/{id}, GET /donate/{campaign_id}."""
 from datetime import datetime, timezone
 
-
 _CAMPAIGN = "campaign_abc123"
 
 
@@ -19,10 +18,26 @@ class TestCreateDonation:
         r = _make_donation(client)
         assert r.status_code == 200
         assert "donationId" in r.json()
+        listed = client.get(f"/donate/{_CAMPAIGN}")
+        assert len(listed.json()["donors"]) == 1
 
     def test_create_donation_returns_id(self, client):
         r = _make_donation(client)
         assert isinstance(r.json()["donationId"], int)
+
+    def test_large_donation_returns_receipt_metadata(self, client):
+        r = _make_donation(client, amount="75.00")
+        data = r.json()
+        assert data["receiptGenerated"] is True
+        assert isinstance(data["receiptId"], int)
+        receipt = client.get(f"/donate/{data['donationId']}/receipt")
+        assert receipt.status_code == 200
+        assert receipt.json()["amount"] == 75.0
+
+    def test_small_donation_has_no_receipt(self, client):
+        donation_id = _make_donation(client, amount="25.00").json()["donationId"]
+        receipt = client.get(f"/donate/{donation_id}/receipt")
+        assert receipt.status_code == 404
 
     def test_create_multiple_donations(self, client):
         id1 = _make_donation(client).json()["donationId"]

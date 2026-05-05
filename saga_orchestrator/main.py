@@ -26,6 +26,10 @@ def record_donation(input: DonationInput):
     
     if response.status_code == 404:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    if response.status_code != 200:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to verify campaign")
+    if response.json().get("campaign", {}).get("isOpen") is False:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Campaign is closed")
     
     payload = {
         "userID" : input.userID,
@@ -39,7 +43,8 @@ def record_donation(input: DonationInput):
     if response.status_code != 200:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to record donation")
     
-    donationId = response.json().get("donationId")
+    donation_payload = response.json()
+    donationId = donation_payload.get("donationId")
     
     response = requests.put(campaign_url + f"/increment/{input.campaignID}/{input.amount}")
     
@@ -52,6 +57,13 @@ def record_donation(input: DonationInput):
         except Exception:
             detail = "Failed to record donation"
         raise HTTPException(status_code=response.status_code, detail=detail)
+
+    return {
+        "donationId": donationId,
+        "receiptGenerated": donation_payload.get("receiptGenerated", False),
+        "receiptId": donation_payload.get("receiptId"),
+        "tax": donation_payload.get("tax"),
+    }
     
 @app.post("/campaign")
 def create_campaign(input : CampaignInput):

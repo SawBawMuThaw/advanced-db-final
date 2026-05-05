@@ -70,11 +70,20 @@ class _MockUserRepo:
 class _MockDonationRepo:
     def create_donation(self, user_id, campaign_id, amount, time):
         did = store.donation_id_seq.next()
+        receipt_generated = float(amount) >= 50
         store.donations[did] = dict(
             donationId=did, userId=user_id,
-            campaignId=campaign_id, amount=amount, time=time
+            campaignId=campaign_id, amount=amount, time=time,
+            receiptGenerated=receipt_generated,
+            receiptId=did if receipt_generated else None,
+            tax=round((float(amount) / 0.9) - float(amount), 2) if receipt_generated else None,
         )
-        return did
+        return {
+            "donationId": did,
+            "receiptGenerated": receipt_generated,
+            "receiptId": did if receipt_generated else None,
+            "tax": round((float(amount) / 0.9) - float(amount), 2) if receipt_generated else None,
+        }
 
     def delete_donation(self, donation_id):
         store.donations.pop(donation_id, None)
@@ -91,6 +100,26 @@ class _MockDonationRepo:
     def get_by_id(self, donation_id):
         return store.donations.get(donation_id)
 
+    def get_receipt_by_donation(self, donation_id):
+        donation = store.donations.get(donation_id)
+        if not donation or not donation.get("receiptGenerated"):
+            return None
+        user = store.users.get(donation["userId"], {})
+        return {
+            "receiptId": donation["receiptId"],
+            "taxPercent": 10,
+            "tax": donation["tax"],
+            "donationId": donation_id,
+            "campaignID": donation["campaignId"],
+            "amount": donation["amount"],
+            "time": donation["time"],
+            "donor": {
+                "userId": donation["userId"],
+                "username": user.get("username", "unknown"),
+                "email": user.get("email", ""),
+            },
+        }
+
 
 # ===========================================================================
 # Activate patches once for the whole session
@@ -98,9 +127,9 @@ class _MockDonationRepo:
 _mock_user_repo     = _MockUserRepo()
 _mock_donation_repo = _MockDonationRepo()
 
-patch("routes.auth_routes._users",        _mock_user_repo).start()
-patch("routes.user_routes._users",        _mock_user_repo).start()
-patch("routes.donation_routes._donations", _mock_donation_repo).start()
+patch("donation_user.routes.auth_routes._users", _mock_user_repo).start()
+patch("donation_user.routes.user_routes._users", _mock_user_repo).start()
+patch("donation_user.routes.donation_routes._donations", _mock_donation_repo).start()
 
 
 # ===========================================================================
@@ -108,7 +137,7 @@ patch("routes.donation_routes._donations", _mock_donation_repo).start()
 # ===========================================================================
 @pytest.fixture(scope="module")
 def client():
-    from main import app
+    from donation_user.main import app
     with TestClient(app) as c:
         yield c
 

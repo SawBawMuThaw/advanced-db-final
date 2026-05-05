@@ -69,6 +69,8 @@ def increment_campaign(mongo_client: Annotated[MongoClient, Depends(get_mongo_cl
     except Exception as e:
         if str(e) == "Campaign not found":
             raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+        elif str(e) == "Campaign is closed":
+            raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="Campaign is closed")
         elif str(e) == "Amount exceeds campaign goal":
             raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="Amount exceeds campaign goal")
         
@@ -149,8 +151,9 @@ def post_image(mongo_client: Annotated[MongoClient, Depends(get_mongo_client)], 
             raise HTTPException(status_code= status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to add image")
         if str(e) == "Invalid image format. Only JPEG and PNG are allowed.":
             raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST, detail="Invalid image format. Only JPEG and PNG are allowed.")
-        
-        
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
 @app.get('/image/{name}')
 def get_image_endpoint(name:str):
     try:

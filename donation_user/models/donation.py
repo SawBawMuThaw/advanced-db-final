@@ -1,5 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -12,6 +14,9 @@ class DonationCreate(BaseModel):
 
 class DonationResponse(BaseModel):
     donationId: int
+    receiptGenerated: bool = False
+    receiptId: Optional[int] = None
+    tax: Optional[Decimal] = None
 
 
 class DonorDetail(BaseModel):

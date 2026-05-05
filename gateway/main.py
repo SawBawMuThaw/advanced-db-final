@@ -217,6 +217,10 @@ async def donate(
 async def get_running_total(campaign_id: str, request: Request):
     return await _proxy("GET", f"{DONATION_USER_URL}/donate/{campaign_id}/running-total", request)
 
+@app.get("/donate/{donation_id}/receipt")
+async def get_receipt(donation_id: int, request: Request):
+    return await _proxy("GET", f"{DONATION_USER_URL}/donate/{donation_id}/receipt", request)
+
 @app.get("/donate/{campaign_id}")
 async def get_donations(campaign_id: str, request: Request):
     return await _proxy("GET", f"{DONATION_USER_URL}/donate/{campaign_id}", request)
@@ -336,6 +340,7 @@ async def reply(
         extra_headers=_user_headers(token),
     )
     
+@app.get("/active-commenters")
 @app.put("/active-commenters")
 async def get_active_commenters(request: Request, top_n : int | None = 10):
     return await _proxy(
@@ -402,9 +407,13 @@ async def upload_image(
     token: TokenPayload,
 ):
 
+    # Forward multipart body but drop Content-Length / Transfer-Encoding so httpx
+    # recomputes them for `content=body_bytes`. Keeping the client's Content-Length
+    # often mismatches and breaks multipart parsing upstream (500 errors).
     headers = {
         k: v for k, v in request.headers.items()
-        if k.lower() not in ("host",)
+        if k.lower()
+        not in ("host", "content-length", "transfer-encoding", "connection")
         and not k.lower().startswith("x-user-")
     }
     headers.update(_user_headers(token))
