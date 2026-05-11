@@ -529,6 +529,12 @@ img {
   font-weight: 800;
 }
 
+.field .field-label {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .field input,
 .field select,
 .field textarea {
@@ -541,6 +547,37 @@ img {
   padding: 12px 14px;
   outline: none;
   transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.stripe-card-field {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--text);
+  padding: 13px 14px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.stripe-card-field.is-mounted {
+  display: block;
+}
+
+.stripe-card-placeholder {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.stripe-card-field.StripeElement--focus {
+  border-color: var(--primary-bright);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.stripe-card-field.StripeElement--invalid {
+  border-color: #f2afa8;
 }
 
 .field textarea {

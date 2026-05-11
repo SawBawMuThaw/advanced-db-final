@@ -914,6 +914,7 @@
     const donationId = param("donationId");
     const form = $("#donateForm");
     const error = $("#donateError");
+    const stripeError = $("#stripeError");
     const receiptNotice = $("#receiptNotice");
     const amountInput = $("#donationAmount");
     const total = $("#donationTotal");
@@ -922,6 +923,44 @@
     const resultPanel = $("#donationResult");
     const checkoutLayout = $("#checkoutLayout");
     let campaign = null;
+    let stripe = null;
+    let cardElement = null;
+
+    function initStripeCard() {
+      if (!window.Stripe) {
+        throw new Error("Stripe.js failed to load. Please refresh the page.");
+      }
+
+      const mount = $("#card-element");
+      if (!mount) {
+        throw new Error("Card input container is missing from the page.");
+      }
+
+      const publishableKey = "pk_test_51TVo5vFd8ZCxtM0HwNaeYSVDxryT3OGVMBT54XURhu44pYErfieNZjnFy5hZU1RNP7SalXqjNAVI9yIdaAtxCqbh0021akr9pz";
+      stripe = window.Stripe(publishableKey);
+      const elements = stripe.elements();
+
+      cardElement = elements.create("card", {
+        hidePostalCode: true,
+        style: {
+          base: {
+            color: "#171b17",
+            fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif",
+            fontSize: "16px",
+            "::placeholder": {
+              color: "#6b766c"
+            }
+          }
+        }
+      });
+
+      mount.innerHTML = "";
+      cardElement.mount("#card-element");
+      mount.classList.add("is-mounted");
+      cardElement.on("change", function (event) {
+        setError(stripeError, event.error ? event.error.message : "");
+      });
+    }
 
     function updateTotal() {
       const amount = Number(amountInput.value || 0);
@@ -950,6 +989,18 @@
       form.querySelector("button[type='submit']").disabled = true;
     }
 
+    try {
+      initStripeCard();
+    } catch (stripeInitError) {
+      setError(error, stripeInitError.message);
+      const mount = $("#card-element");
+      if (mount) {
+        mount.innerHTML = "<span class=\"stripe-card-placeholder\">Unable to load card input. Disable blockers and refresh (Ctrl+F5).</span>";
+      }
+      form.querySelector("button[type='submit']").disabled = true;
+      return;
+    }
+
     amountInput.addEventListener("input", updateTotal);
     $all(".amount-chip").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -963,24 +1014,69 @@
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
       setError(error, "");
+      setError(stripeError, "");
       const amount = Number(amountInput.value);
       if (!amount || amount <= 0) {
         setError(error, "Enter a donation amount greater than $0.00.");
         return;
       }
+      if (!stripe || !cardElement) {
+        setError(error, "Stripe is not initialized. Please refresh and try again.");
+        return;
+      }
       const button = form.querySelector("button[type='submit']");
-      setBusy(button, true, "Confirming...");
+      setBusy(button, true, "Processing payment...");
       try {
-        const result = await Api.donate({
+        const intentResult = await Api.createPaymentIntent({
           campaignID: id,
           amount,
-          time: new Date().toISOString()
+          currency: "usd",
+          description: `Donation for campaign ${id}`
         });
-        if (result.receiptGenerated) {
-          window.location.href = `receipt.html?donationId=${encodeURIComponent(result.donationId)}&campaignId=${encodeURIComponent(id)}`;
-        } else {
-          window.location.href = `donate.html?id=${encodeURIComponent(id)}&status=success`;
+
+        if (!intentResult || !intentResult.client_secret || !intentResult.payment_intent_id) {
+          throw new Error("Failed to start Stripe payment.");
         }
+
+        const stripeResult = await stripe.confirmCardPayment(intentResult.client_secret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              email: payload.email || undefined
+            }
+          }
+        });
+
+        if (stripeResult.error) {
+          throw new Error(stripeResult.error.message || "Card payment failed.");
+        }
+
+        if (!stripeResult.paymentIntent || stripeResult.paymentIntent.status !== "succeeded") {
+          throw new Error("Payment was not completed.");
+        }
+
+        const confirmResult = await Api.confirmStripePayment({
+          payment_intent_id: intentResult.payment_intent_id,
+          campaignID: id
+        });
+
+        if (!confirmResult || confirmResult.success !== true) {
+          throw new Error((confirmResult && confirmResult.error) || "Failed to record donation.");
+        }
+
+        const donationIdValue = confirmResult.donation_id || confirmResult.donationId;
+        if (donationIdValue) {
+          try {
+            await Api.getDonationReceipt(donationIdValue);
+            window.location.href = `receipt.html?donationId=${encodeURIComponent(donationIdValue)}&campaignId=${encodeURIComponent(id)}`;
+            return;
+          } catch (receiptError) {
+            window.location.href = `donate.html?id=${encodeURIComponent(id)}&status=success&donationId=${encodeURIComponent(donationIdValue)}`;
+            return;
+          }
+        }
+
+        window.location.href = `donate.html?id=${encodeURIComponent(id)}&status=success`;
       } catch (requestError) {
         setError(error, requestError.message);
         checkoutLayout.classList.add("hidden");
