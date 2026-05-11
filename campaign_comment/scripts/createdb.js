@@ -20,7 +20,7 @@ const sampleCampaigns = [
 		_id: ObjectId("650000000000000000000001"),
 		goal: 5000.00,
 		current: 481.43,
-		available: 0,
+		available: 481.43,
 		isOpen: true,
 		info: {
 			title: "Clean Water Project - Village A",
@@ -37,7 +37,7 @@ const sampleCampaigns = [
 		_id: ObjectId("650000000000000000000002"),
 		goal: 12000.00,
 		current: 277.40,
-		available: 0,
+		available: 277.40,
 		isOpen: true,
 		info: {
 			title: "School Supplies for Children",
@@ -54,7 +54,7 @@ const sampleCampaigns = [
 		_id: ObjectId("650000000000000000000003"),
 		goal: 8000.00,
 		current: 593.38,
-		available: 0,
+		available: 593.38,
 		isOpen: true,
 		info: {
 			title: "Community Health Clinic",
@@ -71,7 +71,7 @@ const sampleCampaigns = [
 		_id: ObjectId("650000000000000000000004"),
 		goal: 15000.00,
 		current: 820.04,
-		available: 0,
+		available: 820.04,
 		isOpen: false,
 		info: {
 			title: "Solar Power for Community Center",
@@ -88,7 +88,7 @@ const sampleCampaigns = [
 		_id: ObjectId("650000000000000000000005"),
 		goal: 3000.00,
 		current: 886.40,
-		available: 0,
+		available: 886.40,
 		isOpen: true,
 		info: {
 			title: "Books for the Youth Library",
