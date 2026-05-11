@@ -48,6 +48,7 @@ app = FastAPI(title="API Gateway", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -390,6 +391,9 @@ async def get_image(name: str, request: Request):
     response_headers = {}
     if "content-disposition" in resp.headers:
         response_headers["content-disposition"] = resp.headers["content-disposition"]
+    response_headers["cross-origin-resource-policy"] = "cross-origin"
+    response_headers["access-control-allow-origin"] = "*"
+    response_headers["cache-control"] = "public, max-age=3600"
 
     return Response(
         content=resp.content,
