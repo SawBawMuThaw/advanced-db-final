@@ -44,3 +44,5 @@ MongoEnv
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+# image folder
+/campaign_comment/images/

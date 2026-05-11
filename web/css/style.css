@@ -1064,6 +1064,43 @@ img {
   background: var(--surface-soft);
 }
 
+/* Image modal for viewing report/update images larger */
+.image-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.75);
+  z-index: 9999;
+}
+.image-modal-overlay.hidden { display: none; }
+.image-modal-content {
+  position: relative;
+  max-width: 95%;
+  max-height: 95%;
+}
+.image-modal-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 6px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+.image-modal-close {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  background: var(--surface);
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
 .comment-head,
 .report-head,
 .donor-row {

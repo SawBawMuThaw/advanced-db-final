@@ -7,8 +7,13 @@ import os
 from bson import ObjectId
 from ..models.report import Report
 import hashlib
+from pathlib import Path
 
 dotenv.load_dotenv('../.env')
+
+
+def _image_folder_path() -> Path:
+    return Path(__file__).parent.parent / os.getenv("IMAGE_FOLDER_PATH", "images")
 
 def create_report(mongo_client: MongoClient, campaign_id : str, reportTitle : str, amount : float):
     db_name = os.getenv("DB_NAME")
@@ -53,7 +58,8 @@ def get_report(mongo_client: MongoClient, report_id : str):
 
 def create_image(mongo_client: MongoClient, reportId : str, campaignId : str, images : List[UploadFile]):
     db_name = os.getenv("DB_NAME")
-    image_folder_path = os.getenv("IMAGE_FOLDER_PATH")
+    image_folder_path = _image_folder_path()
+    image_folder_path.mkdir(parents=True, exist_ok=True)
     db = mongo_client[db_name]
     campaigns = db["campaigns"]
     
@@ -101,10 +107,9 @@ def create_image(mongo_client: MongoClient, reportId : str, campaignId : str, im
         raise ValueError("Failed to add image")
 
 def get_image(image_name : str):
-    image_folder_path = os.getenv("IMAGE_FOLDER_PATH")
-    image_path = os.path.join(image_folder_path, image_name)
+    image_path = _image_folder_path() / image_name
     
-    if not os.path.exists(image_path):
+    if not image_path.exists():
         raise ValueError("Image not found")
     
-    return image_path
+    return str(image_path)

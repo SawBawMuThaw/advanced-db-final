@@ -118,6 +118,38 @@
     button.textContent = busy ? busyText || "Working..." : button.dataset.originalText;
   }
 
+  // Image modal: open updates images in a larger overlay when clicked
+  function initImageModal() {
+    if (document.getElementById("imageModalOverlay")) return;
+    const overlay = document.createElement("div");
+    overlay.id = "imageModalOverlay";
+    overlay.className = "image-modal-overlay hidden";
+    overlay.innerHTML = `
+      <div class="image-modal-content">
+        <button class="image-modal-close" aria-label="Close image">×</button>
+        <img class="image-modal-img" src="" alt="" />
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener("click", function (event) {
+      if (event.target === overlay || event.target.classList.contains("image-modal-close")) {
+        overlay.classList.add("hidden");
+        overlay.querySelector(".image-modal-img").src = "";
+      }
+    });
+
+    // delegate clicks on report images
+    document.body.addEventListener("click", function (event) {
+      const img = event.target.closest && event.target.closest(".report-images img");
+      if (!img) return;
+      const large = overlay.querySelector(".image-modal-img");
+      large.src = img.src.replace(/(=s\d+(-c)?$)/, "") || img.src; // try stripping size param if present
+      large.alt = img.alt || "Update image";
+      overlay.classList.remove("hidden");
+    });
+  }
+
   function getInfo(campaign) {
     return campaign && campaign.info ? campaign.info : {};
   }
@@ -524,6 +556,33 @@
     `;
   }
 
+  function renderReplies(replies, parentId, loggedIn) {
+    if (!replies || !replies.length) return "";
+    return replies.map(function (reply) {
+      const replyId = reply._id || reply.replyId;
+      const nestedReplies = reply.replies || [];
+      return `
+        <div class="reply">
+          <div class="comment-head">
+            <span class="comment-author">${escapeHtml(reply.user && reply.user.username ? reply.user.username : "User")}</span>
+            ${loggedIn ? `<button class="button button-ghost reply-toggle" type="button" data-comment-id="${escapeHtml(replyId)}">Reply</button>` : ""}
+          </div>
+          <p class="comment-body">${escapeHtml(reply.text)}</p>
+          ${loggedIn ? `
+            <form class="inline-form hidden reply-form" data-comment-id="${escapeHtml(replyId)}">
+              <div class="field">
+                <label>Reply</label>
+                <textarea name="text" required></textarea>
+              </div>
+              <button class="button button-primary" type="submit">Post Reply</button>
+            </form>
+          ` : ""}
+          ${renderReplies(nestedReplies, replyId, loggedIn)}
+        </div>
+      `;
+    }).join("");
+  }
+
   function renderComments(campaign) {
     const comments = campaign.comments || [];
     const loggedIn = isLoggedIn();
@@ -542,7 +601,6 @@
 
     const rendered = comments.length ? comments.map(function (comment) {
       const commentId = comment._id || comment.commentId;
-      const replies = comment.replies || [];
       return `
         <article class="comment">
           <div class="comment-head">
@@ -559,14 +617,7 @@
               <button class="button button-primary" type="submit">Post Reply</button>
             </form>
           ` : ""}
-          ${replies.map(function (reply) {
-            return `
-              <div class="reply">
-                <div class="comment-author">${escapeHtml(reply.user && reply.user.username ? reply.user.username : "User")}</div>
-                <p class="comment-body">${escapeHtml(reply.text)}</p>
-              </div>
-            `;
-          }).join("")}
+          ${renderReplies(comment.replies, commentId, loggedIn)}
         </article>
       `;
     }).join("") : `<div class="empty-state">No comments yet.</div>`;
@@ -1310,6 +1361,7 @@
   }
 
   async function initApp() {
+    initImageModal();
     renderNav();
     const initializers = {
       home: initHome,
