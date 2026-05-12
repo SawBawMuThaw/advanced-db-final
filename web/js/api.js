@@ -113,6 +113,15 @@
     donate: function (payload) {
       return request("/donate", { method: "POST", auth: true, body: payload });
     },
+    createPaymentIntent: function (payload) {
+      return request("/stripe/payment-intent", { method: "POST", auth: true, body: payload });
+    },
+    confirmStripePayment: function (payload) {
+      return request("/stripe/confirm-payment", { method: "POST", auth: true, body: payload });
+    },
+    stripeHealth: function () {
+      return request("/stripe/health");
+    },
     getDonations: function (campaignId) {
       return request(`/donate/${encodeURIComponent(campaignId)}`);
     },

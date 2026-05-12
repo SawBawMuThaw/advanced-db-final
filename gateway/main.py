@@ -227,6 +227,47 @@ async def get_donations(campaign_id: str, request: Request):
     return await _proxy("GET", f"{DONATION_USER_URL}/donate/{campaign_id}", request)
 
 
+@app.post("/stripe/payment-intent")
+async def create_stripe_payment_intent(
+    body: dict,
+    request: Request,
+    token: TokenPayload,
+):
+    payload = dict(body)
+    payload["userID"] = int(token["sub"])
+
+    return await _proxy(
+        "POST",
+        f"{DONATION_USER_URL}/stripe/payment-intent",
+        request,
+        payload,
+        extra_headers=_user_headers(token),
+    )
+
+
+@app.post("/stripe/confirm-payment")
+async def confirm_stripe_payment(
+    body: dict,
+    request: Request,
+    token: TokenPayload,
+):
+    payload = dict(body)
+    payload["userID"] = int(token["sub"])
+
+    return await _proxy(
+        "POST",
+        f"{DONATION_USER_URL}/stripe/confirm-payment",
+        request,
+        payload,
+        extra_headers=_user_headers(token),
+    )
+
+
+@app.get("/stripe/health")
+async def stripe_health(request: Request):
+    return await _proxy("GET", f"{DONATION_USER_URL}/stripe/health", request)
+
+
 # ---------------------------------------------------------------------------
 # CAMPAIGN
 # ---------------------------------------------------------------------------
