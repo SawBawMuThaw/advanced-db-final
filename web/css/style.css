@@ -911,6 +911,101 @@ img {
   font-weight: 800;
 }
 
+.commenter-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.commenter-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px;
+  border: 1px solid rgba(200, 208, 196, 0.9);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 244, 0.94));
+  box-shadow: 0 8px 18px rgba(22, 29, 22, 0.06);
+}
+
+.commenter-rank-cell {
+  flex: 0 0 64px;
+}
+
+.commenter-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.commenter-user {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.commenter-avatar {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: #16331c;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.commenter-meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.commenter-name {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.commenter-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.commenter-metric {
+  display: grid;
+  gap: 4px;
+  min-width: 108px;
+  justify-items: end;
+}
+
+.commenter-metric strong {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.commenter-metric span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .home-band {
   border-top: 1px solid rgba(200, 208, 196, 0.72);
   background: #ffffff;
@@ -1892,6 +1987,11 @@ img {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .commenter-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
   .pending-update {
     grid-template-columns: 1fr;
   }
@@ -1973,6 +2073,23 @@ img {
 
   .campaign-grid {
     grid-template-columns: 1fr;
+  }
+
+  .commenter-row {
+    padding: 16px 18px;
+  }
+
+  .commenter-rank-cell {
+    flex-basis: auto;
+  }
+
+  .commenter-user {
+    width: 100%;
+  }
+
+  .commenter-metric {
+    min-width: 0;
+    justify-items: start;
   }
 
   .impact-stats {

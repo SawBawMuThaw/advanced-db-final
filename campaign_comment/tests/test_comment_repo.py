@@ -10,6 +10,7 @@ from ..repository.commentRepository import create_comment, create_reply, get_mos
 from ..repository.campaignRepository import get_campaign
 
 campaign_id = "6622f0b7a12c4d91f9b00123"
+campaign_id_two = "6622f0b7a12c4d91f9b00124"
 doc = {
     '_id': ObjectId(campaign_id),
     'goal': 50000.0,
@@ -26,6 +27,24 @@ doc = {
         'likes': 18,
         'likedBy': [2, 4, 9, 11, 15],
         'created': datetime(2026, 4, 19, 10, 30, 0)
+    },
+}
+doc_two = {
+    '_id': ObjectId(campaign_id_two),
+    'goal': 32000.0,
+    'current': 8450.0,
+    'isOpen': True,
+    'info': {
+        'title': "School Roof Repair Fund",
+        'owner': {
+            'userId': 8,
+            'username': "owner_two"
+        },
+        'description': "Repair classrooms before monsoon season begins.",
+        'videolink': "https://example.com/campaign-two-video",
+        'likes': 9,
+        'likedBy': [1, 3, 6],
+        'created': datetime(2026, 4, 21, 9, 15, 0)
     },
 }
 comment = {
@@ -48,6 +67,16 @@ comment2 = {
     'campaignId': ObjectId(campaign_id),
     'parentId': ObjectId("5234f0b7a12c4d91f9b00001")
 }
+comment3 = {
+    '_id': ObjectId("5234f0b7a12c4d91f9b00003"),
+    'user': {
+        'userId': 5,
+        'username': "testuser"
+    },
+    'text': "We just posted a fresh update on the roof materials.",
+    'campaignId': ObjectId(campaign_id_two),
+    'parentId': None
+}
 
 
 @pytest.fixture
@@ -60,9 +89,11 @@ def mock_db(mock_mongo_client):
     db = mock_mongo_client['charitydb']
     db.create_collection('campaigns')
     db.campaigns.insert_one(doc)
+    db.campaigns.insert_one(doc_two)
     db.create_collection('comments')
     db.comments.insert_one(comment)
     db.comments.insert_one(comment2)
+    db.comments.insert_one(comment3)
     return db
 
 
@@ -148,5 +179,5 @@ def test_get_most_active_commenters(mock_db, mock_mongo_client, monkeypatch):
     assert len(active_commenters) == 2
     assert active_commenters[0]['userId'] == 5
     assert active_commenters[0]['username'] == 'testuser'
-    assert active_commenters[0]['totalComments'] == 1
-    assert active_commenters[0]['campaignCount'] == 1
+    assert active_commenters[0]['totalComments'] == 2
+    assert active_commenters[0]['campaignCount'] == 2
