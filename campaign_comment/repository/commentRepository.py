@@ -143,8 +143,14 @@ def get_most_active_commenters(mongo_client, top_n: int = 10):
 
     db = mongo_client[db_name]
     comments = db['comments']
+    limit = max(1, int(top_n or 10))
 
     pipeline = [
+        {
+            '$match': {
+                'user.userId': {'$ne': None}
+            }
+        },
         {'$group': {
             '_id': {
                 'userId': '$user.userId',
@@ -154,28 +160,17 @@ def get_most_active_commenters(mongo_client, top_n: int = 10):
             'uniqueCampaigns': {'$addToSet': '$campaignId'}
         }
         },
-        {'$sort' : {'commentCount' : -1}},
-        {'$limit' : top_n},
         {
             '$project' : {
                 '_id' : 0,
                 'userId' : '$_id.userId',
-                'username' : '$_id.username',
+                'username' : {'$ifNull': ['$_id.username', 'User']},
                 'totalComments' : '$commentCount',
                 'campaignCount' : {'$size' : '$uniqueCampaigns'}
             }
-        }
+        },
+        {'$sort' : {'totalComments' : -1, 'campaignCount': -1, 'userId': 1}},
+        {'$limit' : limit},
     ]
 
-    results = comments.aggregate(pipeline)
-
-    active_commenters = []
-    for result in results:
-        userId = result['userId']
-        username = result['username']
-        totalComments = result['totalComments']
-        campaignCount = result['campaignCount']
-        active_commenters.append(
-            {'userId': userId, 'username': username, 'totalComments': totalComments, 'campaignCount': campaignCount})
-
-    return active_commenters
+    return list(comments.aggregate(pipeline))

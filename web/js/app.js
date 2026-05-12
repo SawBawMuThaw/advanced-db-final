@@ -332,6 +332,7 @@
   async function initHome() {
     const grid = $("#campaignGrid");
     const error = $("#homeError");
+    const activeCommenters = $("#activeCommenters");
     const pageLabel = $("#pageLabel");
     const prevButton = $("#prevPage");
     const nextButton = $("#nextPage");
@@ -384,6 +385,17 @@
       }
     }
 
+    async function loadActiveCommenters() {
+      if (!activeCommenters) return;
+      activeCommenters.innerHTML = `<span class="loader">Loading community activity</span>`;
+      try {
+        const data = await Api.getActiveCommenters(6);
+        activeCommenters.innerHTML = renderActiveCommenters(data.activeCommenters || []);
+      } catch (requestError) {
+        activeCommenters.innerHTML = `<div class="empty-state">${escapeHtml(requestError.message)}</div>`;
+      }
+    }
+
     if (homeSearch) {
       homeSearch.addEventListener("submit", function (event) {
         event.preventDefault();
@@ -408,7 +420,7 @@
       window.location.href = `index.html?page=${page + 1}`;
     });
 
-    await load();
+    await Promise.all([load(), loadActiveCommenters()]);
   }
 
   async function initLogin() {
@@ -509,16 +521,50 @@
       <div class="donation-activity">
         <div class="mini-title">Recent Donations</div>
         ${list.map(function (entry) {
-          return `
+      return `
             <div class="activity-row">
               <span>${escapeHtml(entry.username || "Anonymous")}</span>
               <strong>${formatCurrency(entry.amount)}</strong>
               <small>${formatCurrency(entry.runningTotal)} total</small>
             </div>
           `;
-        }).join("")}
+    }).join("")}
       </div>
     `;
+  }
+
+  function renderActiveCommenters(commenters) {
+    const list = (commenters || []).slice(0, 6);
+    if (!list.length) return `<div class="empty-state">No comment activity has been recorded yet.</div>`;
+    return list.map(function (commenter, index) {
+      const username = commenter.username || "User";
+      const totalComments = Number(commenter.totalComments || 0);
+      const campaignCount = Number(commenter.campaignCount || 0);
+      return `
+        <article class="commenter-row">
+          <div class="commenter-rank-cell">
+            <span class="commenter-rank">#${index + 1}</span>
+          </div>
+          <div class="commenter-user">
+            <div class="commenter-avatar" aria-hidden="true">${escapeHtml(username.charAt(0).toUpperCase())}</div>
+            <div class="commenter-meta">
+              <a class="commenter-name" href="profile.html?ownerId=${encodeURIComponent(commenter.userId || "")}">
+                ${escapeHtml(username)}
+              </a>
+              <span class="commenter-note">Active across campaign discussions</span>
+            </div>
+          </div>
+          <div class="commenter-metric">
+            <strong>${totalComments}</strong>
+            <span>${totalComments === 1 ? "comment" : "comments"}</span>
+          </div>
+          <div class="commenter-metric">
+            <strong>${campaignCount}</strong>
+            <span>${campaignCount === 1 ? "campaign" : "campaigns"}</span>
+          </div>
+        </article>
+      `;
+    }).join("");
   }
 
   function renderDonors(donors, entries) {
@@ -640,8 +686,8 @@
           ${images.length ? `
             <div class="report-images">
               ${images.map(function (name) {
-                return `<img src="${Api.imageUrl(name)}" alt="${escapeHtml(report.reportTitle || "Report image")}" loading="lazy">`;
-              }).join("")}
+        return `<img src="${Api.imageUrl(name)}" alt="${escapeHtml(report.reportTitle || "Report image")}" loading="lazy">`;
+      }).join("")}
             </div>
           ` : ""}
         </article>

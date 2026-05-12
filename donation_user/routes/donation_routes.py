@@ -1,3 +1,6 @@
+import os
+
+import requests
 from fastapi import APIRouter, HTTPException, status
 
 from ..models.donation import (
@@ -19,6 +22,20 @@ from ..services.stripe_service import stripe_service
 
 router = APIRouter(tags=["donations"])
 _donations = DonationRepository()
+
+
+def _increment_campaign_total(campaign_id: str, amount: float) -> None:
+    campaign_url = os.getenv("CAMPAIGN_COMMENT_SERVICE")
+    if not campaign_url:
+        raise RuntimeError("Campaign service is not configured")
+
+    response = requests.put(f"{campaign_url}/increment/{campaign_id}/{amount}")
+    if response.status_code != 200:
+        try:
+            detail = response.json().get("detail", "Failed to update campaign total")
+        except Exception:
+            detail = "Failed to update campaign total"
+        raise RuntimeError(detail)
 
 
 @router.get("/donate/{campaign_id}/running-total", response_model=RunningTotalResponse)
@@ -193,8 +210,10 @@ def confirm_payment(body: StripeConfirmPaymentRequest):
             amount=donation_data.amount,
             time=donation_data.time,
         )
-        
-        donation_id = result if isinstance(result, int) else result.get("donationId")
+
+        donation_payload = result if isinstance(result, dict) else {"donationId": result}
+        donation_id = donation_payload.get("donationId")
+        _increment_campaign_total(body.campaignID, float(payment_status["amount"]))
         
         return StripeConfirmPaymentResponse(
             success=True,
@@ -202,6 +221,11 @@ def confirm_payment(body: StripeConfirmPaymentRequest):
             payment_status=payment_status["status"],
         )
     except Exception as e:
+        if "donation_id" in locals() and donation_id is not None:
+            try:
+                _donations.delete_donation(donation_id)
+            except Exception:
+                pass
         return StripeConfirmPaymentResponse(
             success=False,
             error=f"Failed to record donation: {str(e)}",

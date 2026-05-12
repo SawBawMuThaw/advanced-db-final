@@ -36,6 +36,10 @@ class StripePaymentService:
             intent = stripe.PaymentIntent.create(
                 amount=amount_cents,
                 currency=currency,
+                # The frontend only collects card details with Stripe Elements.
+                # Restrict the intent to cards so Stripe does not require a
+                # return_url for redirect-based payment methods enabled in the dashboard.
+                payment_method_types=["card"],
                 description=description or f"Donation for campaign {campaign_id}",
                 metadata=payment_metadata,
             )

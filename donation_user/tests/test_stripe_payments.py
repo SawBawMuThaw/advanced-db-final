@@ -38,6 +38,7 @@ class TestStripePaymentService:
         assert result["amount"] == Decimal("10.50")
         assert result["currency"] == "usd"
         mock_create.assert_called_once()
+        assert mock_create.call_args.kwargs["payment_method_types"] == ["card"]
     
     @patch("stripe.PaymentIntent.create")
     def test_create_payment_intent_stripe_error(self, mock_create):
@@ -254,6 +255,68 @@ class TestStripeIntegrationScenarios:
             # Check that create was called with correct amount in cents
             call_args = mock_create.call_args
             assert call_args.kwargs["amount"] == expected_cents
+            assert call_args.kwargs["payment_method_types"] == ["card"]
+
+
+class TestStripeConfirmRoute:
+    @patch("donation_user.routes.donation_routes.requests.put")
+    @patch("stripe.PaymentIntent.retrieve")
+    def test_confirm_payment_updates_campaign_total(self, mock_retrieve, mock_put, client, monkeypatch):
+        monkeypatch.setenv("CAMPAIGN_COMMENT_SERVICE", "http://campaign-service")
+        mock_put.return_value = Mock(status_code=200)
+
+        mock_intent = Mock()
+        mock_intent.id = "pi_test_123"
+        mock_intent.status = "succeeded"
+        mock_intent.amount = 2500
+        mock_intent.currency = "usd"
+        mock_intent.client_secret = "pi_test_secret_123"
+        mock_intent.metadata = {}
+        mock_intent.charges = Mock()
+        mock_intent.charges.data = [Mock()]
+        mock_retrieve.return_value = mock_intent
+
+        response = client.post("/stripe/confirm-payment", json={
+            "payment_intent_id": "pi_test_123",
+            "userID": 1,
+            "campaignID": "campaign_abc123",
+        })
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert response.json()["payment_status"] == "succeeded"
+        donors_response = client.get("/donate/campaign_abc123")
+        assert len(donors_response.json()["donors"]) == 1
+        mock_put.assert_called_once_with("http://campaign-service/increment/campaign_abc123/25.0")
+
+    @patch("donation_user.routes.donation_routes.requests.put")
+    @patch("stripe.PaymentIntent.retrieve")
+    def test_confirm_payment_rolls_back_when_campaign_update_fails(self, mock_retrieve, mock_put, client, monkeypatch):
+        monkeypatch.setenv("CAMPAIGN_COMMENT_SERVICE", "http://campaign-service")
+        mock_put.return_value = Mock(status_code=400, json=Mock(return_value={"detail": "Campaign is closed"}))
+
+        mock_intent = Mock()
+        mock_intent.id = "pi_test_456"
+        mock_intent.status = "succeeded"
+        mock_intent.amount = 1500
+        mock_intent.currency = "usd"
+        mock_intent.client_secret = "pi_test_secret_456"
+        mock_intent.metadata = {}
+        mock_intent.charges = Mock()
+        mock_intent.charges.data = [Mock()]
+        mock_retrieve.return_value = mock_intent
+
+        response = client.post("/stripe/confirm-payment", json={
+            "payment_intent_id": "pi_test_456",
+            "userID": 1,
+            "campaignID": "campaign_abc123",
+        })
+
+        assert response.status_code == 200
+        assert response.json()["success"] is False
+        assert "Campaign is closed" in response.json()["error"]
+        donors_response = client.get("/donate/campaign_abc123")
+        assert donors_response.json()["donors"] == []
 
 
 @pytest.fixture
